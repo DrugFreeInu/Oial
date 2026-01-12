@@ -33,17 +33,19 @@ resize();
 /* ───────── TIME ───────── */
 let T = 0;
 
-/* ───────── PRESENCE ───────── */
+/* ───────── EYE CORE ───────── */
 const eye = {
   x: w * 0.5,
   y: h * 0.45,
-  radius: 62,
+  outerRadius: 78,   // now plain
+  innerRx: 46,       // now PRIMARY
+  innerRy: 18,
   blink: 1,
   blinkTarget: 1,
   nextBlink: performance.now() + 6000 + Math.random()*6000
 };
 
-/* ───────── LETTER FIELD ───────── */
+/* ───────── LETTER FIELD (CHAOS) ───────── */
 const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789?!@#$";
 const letters = [];
 const LETTER_COUNT = 36;
@@ -52,8 +54,8 @@ function initLetters(){
   letters.length = 0;
   for(let i=0;i<LETTER_COUNT;i++){
     letters.push({
-      x: (Math.random()-0.5)*46,
-      y: (Math.random()-0.5)*18,
+      x: (Math.random()-0.5)*eye.innerRx,
+      y: (Math.random()-0.5)*eye.innerRy,
       vx: (Math.random()-0.5)*0.6,
       vy: (Math.random()-0.5)*0.6,
       r: Math.random()*Math.PI*2,
@@ -64,26 +66,35 @@ function initLetters(){
 }
 initLetters();
 
+/* ───────── CENTER LOCKED LETTERS ───────── */
+const locked = [];
+
+window.addEventListener("keydown", e => {
+  const key = e.key.toUpperCase();
+  if (CHARS.includes(key)) {
+    locked.push({
+      ch: key,
+      t: 0
+    });
+  }
+});
+
+/* ───────── SCRAMBLE ON BLINK ───────── */
 function scrambleLetters(){
   letters.forEach(l=>{
     l.vx += (Math.random()-0.5)*1.2;
     l.vy += (Math.random()-0.5)*1.2;
     l.vr += (Math.random()-0.5)*0.1;
-    l.ch = CHARS[Math.floor(Math.random()*CHARS.length)];
   });
 }
 
-/* ───────── DRAW LETTER CHAOS (CLIPPED) ───────── */
-function drawLetterEye(){
+/* ───────── DRAW CHAOS LETTERS ───────── */
+function drawLetterChaos(){
   ctx.save();
   ctx.translate(eye.x, eye.y);
 
-  const rx = 46 * eye.blink;
-  const ry = 18 * eye.blink;
-
-  ctx.beginPath();
-  ctx.ellipse(0,0,rx,ry,0,0,Math.PI*2);
-  ctx.clip();
+  const rx = eye.innerRx * eye.blink;
+  const ry = eye.innerRy * eye.blink;
 
   ctx.font = "14px monospace";
   ctx.textAlign = "center";
@@ -94,49 +105,73 @@ function drawLetterEye(){
     l.y += l.vy;
     l.r += l.vr;
 
-    if(Math.abs(l.x) > rx){ l.vx *= -1; }
-    if(Math.abs(l.y) > ry){ l.vy *= -1; }
+    const nx = (l.x*l.x)/(rx*rx);
+    const ny = (l.y*l.y)/(ry*ry);
+    if (nx + ny > 1) {
+      l.vx *= -1;
+      l.vy *= -1;
+    }
 
     ctx.save();
-    ctx.translate(l.x,l.y);
+    ctx.translate(l.x, l.y);
     ctx.rotate(l.r);
-    ctx.fillStyle = "rgba(120,255,180,0.65)";
-    ctx.fillText(l.ch,0,0);
+    ctx.fillStyle = "rgba(120,255,180,0.6)";
+    ctx.fillText(l.ch, 0, 0);
     ctx.restore();
   });
 
   ctx.restore();
 }
 
-/* ───────── FRACTURED INNER BORDER (BLINK) ───────── */
-function drawInnerBorder(){
+/* ───────── DRAW LOCKED CENTER LETTERS ───────── */
+function drawLockedLetters(){
   ctx.save();
   ctx.translate(eye.x, eye.y);
 
-  const rx = 46 * eye.blink;
-  const ry = 18 * eye.blink;
-  const segments = 16;
-  const baseRot = Math.sin(T*0.35)*0.2;
+  ctx.font = "18px monospace";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
 
-  ctx.rotate(baseRot);
+  locked.forEach((l,i)=>{
+    l.t = Math.min(l.t + 0.03, 1);
+    const y = i * 20 - (locked.length-1)*10;
+
+    ctx.fillStyle = `rgba(120,255,180,${l.t})`;
+    ctx.fillText(l.ch, 0, y);
+  });
+
+  ctx.restore();
+}
+
+/* ───────── FRACTURED PRIMARY EYE ───────── */
+function drawPrimaryEye(){
+  ctx.save();
+  ctx.translate(eye.x, eye.y);
+
+  const breathe = Math.sin(T * 0.6) * 2;
+  const twist = Math.sin(T * 0.35) * 0.25;
+  ctx.rotate(twist);
+
+  const segments = 18;
 
   for(let i=0;i<segments;i++){
     if(Math.random()<0.35) continue;
 
     const a0 = (i/segments)*Math.PI*2;
-    const a1 = a0 + (Math.PI*2/segments)*(0.45+Math.random()*0.4);
+    const a1 = a0 + (Math.PI*2/segments)*(0.5+Math.random()*0.4);
 
     ctx.beginPath();
     ctx.ellipse(
       0,0,
-      rx + Math.sin(T+i)*1.2,
-      ry + Math.cos(T+i)*1.0,
+      eye.innerRx + breathe + Math.sin(T+i)*1.2,
+      eye.innerRy + Math.cos(T+i)*1.0,
       0,
       a0,a1
     );
-    ctx.strokeStyle = "rgba(120,255,180,0.5)";
-    ctx.lineWidth = 1.5;
-    ctx.shadowColor = "rgba(120,255,180,0.3)";
+
+    ctx.strokeStyle = "rgba(120,255,180,0.55)";
+    ctx.lineWidth = 1.8;
+    ctx.shadowColor = "rgba(120,255,180,0.25)";
     ctx.shadowBlur = 10;
     ctx.stroke();
   }
@@ -144,35 +179,16 @@ function drawInnerBorder(){
   ctx.restore();
 }
 
-/* ───────── FRACTURED OUTER RING ───────── */
+/* ───────── PLAIN OUTER RING ───────── */
 function drawOuterRing(){
   ctx.save();
   ctx.translate(eye.x, eye.y);
 
-  const breathe = Math.sin(T * 0.6) * 6;
-  const twist = Math.sin(T * 0.35) * 0.25;
-  ctx.rotate(twist);
-
-  const segments = 22;
-
-  for(let i=0;i<segments;i++){
-    if(Math.random()<0.38) continue;
-
-    const a0 = (i/segments)*Math.PI*2;
-    const a1 = a0 + (Math.PI*2/segments)*(0.5+Math.random()*0.5);
-
-    ctx.beginPath();
-    ctx.arc(
-      0,0,
-      eye.radius + breathe + Math.sin(T+i)*2,
-      a0,a1
-    );
-    ctx.strokeStyle = "rgba(120,255,180,0.45)";
-    ctx.lineWidth = 2;
-    ctx.shadowColor = "rgba(120,255,180,0.35)";
-    ctx.shadowBlur = 14;
-    ctx.stroke();
-  }
+  ctx.beginPath();
+  ctx.arc(0,0,eye.outerRadius,0,Math.PI*2);
+  ctx.strokeStyle = "rgba(120,255,180,0.25)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
 
   ctx.restore();
 }
@@ -182,10 +198,10 @@ function loop(){
   ctx.clearRect(0,0,w,h);
   T += 0.003;
 
-  // blink timing
+  // blink logic
   if(performance.now()>eye.nextBlink && eye.blinkTarget===1){
     eye.blinkTarget = 0;
-    scrambleLetters(); // spin ticket cage
+    scrambleLetters();
   }
   if(eye.blinkTarget===0 && eye.blink<0.05){
     eye.blinkTarget = 1;
@@ -193,9 +209,10 @@ function loop(){
   }
   eye.blink += (eye.blinkTarget-eye.blink)*0.08;
 
-  drawLetterEye();     // 🎟 chaos
-  drawInnerBorder();   // 👁 blinking line-art
-  drawOuterRing();     // ⭕ containment
+  drawLetterChaos();     // chaotic language
+  drawLockedLetters();   // typed truth
+  drawPrimaryEye();      // main eye
+  drawOuterRing();       // calm container
 
   requestAnimationFrame(loop);
 }
