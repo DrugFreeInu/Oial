@@ -40,24 +40,30 @@ const eye = {
   innerRX: 46,
   innerRY: 18,
   outerR: 62,
+  bandInner: 72,   // inside dashed ring
+  bandOuter: 98,   // outside dashed ring
   blink: 1,
   blinkTarget: 1,
   nextBlink: performance.now() + 6000 + Math.random()*6000
 };
 
-/* ───────── LETTER RING ───────── */
+/* ───────── LETTER FIELD (RING BAND CHAOS) ───────── */
 const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789?!@#$";
 const letters = [];
-const LETTER_COUNT = 40;
+const LETTER_COUNT = 42;
 
 function initLetters(){
   letters.length = 0;
   for(let i=0;i<LETTER_COUNT;i++){
+    const a = Math.random()*Math.PI*2;
+    const r = eye.bandInner + Math.random()*(eye.bandOuter-eye.bandInner);
+
     letters.push({
-      a: (i / LETTER_COUNT) * Math.PI * 2,
-      baseR: eye.outerR + 26,
-      va: 0.002 + Math.random()*0.002,
-      wobble: Math.random()*Math.PI*2,
+      a,
+      r,
+      vx: (Math.random()-0.5)*0.002,
+      vr: (Math.random()-0.5)*0.4,
+      rot: Math.random()*Math.PI*2,
       ch: CHARS[Math.floor(Math.random()*CHARS.length)]
     });
   }
@@ -66,37 +72,46 @@ initLetters();
 
 function scrambleLetters(){
   letters.forEach(l=>{
-    l.va = 0.002 + Math.random()*0.004;
+    l.vx += (Math.random()-0.5)*0.004;
+    l.vr += (Math.random()-0.5)*0.8;
     l.ch = CHARS[Math.floor(Math.random()*CHARS.length)];
   });
 }
 
-/* ───────── DRAW LETTER HALO ───────── */
-function drawLetterRing(){
+/* ───────── DRAW LETTER BAND (CLIPPED ANNULUS) ───────── */
+function drawLetterBand(){
   ctx.save();
   ctx.translate(eye.x(), eye.y());
+
+  // --- annulus clip ---
+  ctx.beginPath();
+  ctx.arc(0,0,eye.bandOuter,0,Math.PI*2);
+  ctx.arc(0,0,eye.bandInner,0,Math.PI*2,true);
+  ctx.clip();
 
   ctx.font = "14px monospace";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
   letters.forEach(l=>{
-    l.a += l.va;
-    l.wobble += 0.02;
+    l.a += l.vx;
+    l.r += l.vr;
+    l.rot += 0.01;
 
-    const r = l.baseR + Math.sin(l.wobble) * 1.6;
-    const x = Math.cos(l.a) * r;
-    const y = Math.sin(l.a) * r;
+    // containment physics
+    if(l.r < eye.bandInner){ l.r = eye.bandInner; l.vr *= -1; }
+    if(l.r > eye.bandOuter){ l.r = eye.bandOuter; l.vr *= -1; }
+
+    const x = Math.cos(l.a) * l.r;
+    const y = Math.sin(l.a) * l.r;
 
     ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(l.a + Math.PI/2);
-
+    ctx.translate(x,y);
+    ctx.rotate(l.rot);
     ctx.fillStyle = "rgba(120,255,180,0.7)";
-    ctx.shadowColor = "rgba(120,255,180,0.4)";
-    ctx.shadowBlur = 8;
-    ctx.fillText(l.ch, 0, 0);
-
+    ctx.shadowColor = "rgba(120,255,180,0.45)";
+    ctx.shadowBlur = 10;
+    ctx.fillText(l.ch,0,0);
     ctx.restore();
   });
 
@@ -122,7 +137,23 @@ function drawInnerEye(){
   ctx.restore();
 }
 
-/* ───────── FRACTURED OUTER RING ───────── */
+/* ───────── DASHED RING ───────── */
+function drawDashedRing(){
+  ctx.save();
+  ctx.translate(eye.x(), eye.y());
+
+  ctx.setLineDash([8,8]);
+  ctx.beginPath();
+  ctx.arc(0,0,(eye.bandInner+eye.bandOuter)/2,0,Math.PI*2);
+  ctx.strokeStyle = "rgba(120,255,180,0.35)";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.restore();
+}
+
+/* ───────── OUTER FRACTURE ───────── */
 function drawOuterRing(){
   ctx.save();
   ctx.translate(eye.x(), eye.y());
@@ -171,9 +202,10 @@ function loop(){
   }
   eye.blink += (eye.blinkTarget - eye.blink) * 0.08;
 
-  drawLetterRing();   // locked halo
-  drawInnerEye();     // calm center
-  drawOuterRing();    // fractured containment
+  drawLetterBand();   // 🔥 chaos INSIDE ring
+  drawDashedRing();
+  drawInnerEye();
+  drawOuterRing();
 
   requestAnimationFrame(loop);
 }
