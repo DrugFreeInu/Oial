@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Olly — Functional Peak</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: radial-gradient(
+    circle at center,
+    #07182f 0%,
+    #051226 45%,
+    #030c1b 75%,
+    #010610 100%
+  );
+  overflow: hidden;
+}
+canvas { display:block; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<script>
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
+
+let w,h;
+function resize(){
+  w = canvas.width = innerWidth;
+  h = canvas.height = innerHeight;
+}
+addEventListener("resize", resize);
+resize();
+
+/* ───────── OLLY STATE ───────── */
+const olly = {
+  x: w*0.5, y: h*0.5,
+  vx: 0, vy: 0,
+  rBase: Math.min(w,h)*0.22,
+  breath: Math.random()*Math.PI*2,
+  nextPush: performance.now()+1600
+};
+
+/* ───────── FIELD PHASES ───────── */
+const field = {
+  a: Math.random()*Math.PI*2,
+  b: Math.random()*Math.PI*2
+};
+
+/* ───────── SKATE PUSH ───────── */
+function skatePush(){
+  const angle = Math.random()*Math.PI*2;
+  const force = 0.6 + Math.random()*0.9;
+  olly.vx += Math.cos(angle)*force;
+  olly.vy += Math.sin(angle)*force;
+  olly.nextPush = performance.now() + 1800 + Math.random()*2600;
+}
+
+/* ───────── UPDATE ───────── */
+function update(){
+  if(performance.now() > olly.nextPush) skatePush();
+
+  // friction (functional)
+  olly.vx *= 0.985;
+  olly.vy *= 0.985;
+
+  olly.x += olly.vx;
+  olly.y += olly.vy;
+
+  // soft bounds
+  const m = Math.min(w,h)*0.15;
+  if(olly.x<m || olly.x>w-m) olly.vx *= -0.5;
+  if(olly.y<m || olly.y>h-m) olly.vy *= -0.5;
+
+  olly.breath += 0.002;
+
+  // field time
+  field.a += 0.00025;
+  field.b += 0.00018;
+}
+
+/* ───────── DRAW AIR (SCALES WITH SPEED) ───────── */
+function drawAir(){
+  const speed = Math.hypot(olly.vx, olly.vy);
+  const intensity = Math.min(speed / 2.2, 1); // ← functional peak
+
+  const inhale = (Math.sin(field.a)+1)*0.5;
+  const sway = Math.sin(field.b)*30*intensity;
+
+  const R = olly.rBase * (3.2 + inhale*1.1 + intensity*1.2);
+  const alpha = 0.06 + inhale*0.08 + intensity*0.12;
+
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+
+  const grad = ctx.createRadialGradient(
+    olly.x + sway,
+    olly.y - sway,
+    olly.rBase*0.15,
+    olly.x,
+    olly.y,
+    R
+  );
+
+  grad.addColorStop(0, `rgba(120,255,180,${alpha})`);
+  grad.addColorStop(0.55, `rgba(120,255,180,${alpha*0.45})`);
+  grad.addColorStop(1, `rgba(120,255,180,0)`);
+
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(olly.x, olly.y, R, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+/* ───────── DRAW OLLY CORE ───────── */
+function drawOlly(){
+  const inhale = (Math.sin(olly.breath)+1)*0.5;
+  const r = olly.rBase * (0.8 + inhale*0.3);
+  const a = 0.08 + inhale*0.12;
+
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+
+  const grad = ctx.createRadialGradient(
+    olly.x, olly.y, r*0.12,
+    olly.x, olly.y, r
+  );
+
+  grad.addColorStop(0, `rgba(120,255,180,${a})`);
+  grad.addColorStop(0.6, `rgba(120,255,180,${a*0.4})`);
+  grad.addColorStop(1, `rgba(120,255,180,0)`);
+
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(olly.x, olly.y, r, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+/* ───────── GRAIN ───────── */
+function grain(){
+  ctx.save();
+  ctx.globalCompositeOperation = "overlay";
+  ctx.fillStyle = "rgba(255,255,255,0.014)";
+  for(let i=0;i<80;i++){
+    ctx.fillRect(Math.random()*w, Math.random()*h, 1, 1);
+  }
+  ctx.restore();
+}
+
+/* ───────── LOOP ───────── */
+function loop(){
+  ctx.clearRect(0,0,w,h);
+  update();
+  drawAir();
+  drawOlly();
+  grain();
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>
