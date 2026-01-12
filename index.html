@@ -37,7 +37,7 @@ let T = 0;
 const eye = {
   x: w * 0.5,
   y: h * 0.45,
-  innerR: 26,        // 👁 inner circle radius
+  innerR: 26,
   outerR: 62,
   blink: 1,
   blinkTarget: 1,
@@ -47,7 +47,7 @@ const eye = {
 /* ───────── LETTER FIELD ───────── */
 const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789?!@#$";
 const letters = [];
-const LETTER_COUNT = 44;
+const LETTER_COUNT = 88; // 🔥 doubled
 
 function initLetters(){
   letters.length = 0;
@@ -121,11 +121,12 @@ function maskInnerEye(){
   ctx.globalCompositeOperation = "source-over";
 }
 
-/* ───────── INNER EYE (DASHED CIRCLE) ───────── */
+/* ───────── INNER EYE (DASHED + SPIN BLINK) ───────── */
 function drawInnerEye(){
   ctx.save();
   ctx.translate(eye.x, eye.y);
 
+  ctx.rotate(T * 1.2); // same spin-blink you liked
   ctx.setLineDash([8,8]);
   ctx.beginPath();
   ctx.arc(0,0,eye.innerR * eye.blink,0,Math.PI*2);
@@ -187,9 +188,9 @@ function loop(){
   eye.blink += (eye.blinkTarget-eye.blink)*0.08;
 
   drawLetterRing();
-  maskInnerEye();     // letters go under
-  drawInnerEye();     // dashed circle
-  drawOuterRing();    // spinning ring
+  maskInnerEye();
+  drawInnerEye();
+  drawOuterRing();
 
   requestAnimationFrame(loop);
 }
