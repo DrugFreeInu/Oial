@@ -33,44 +33,39 @@ resize();
 /* ───────── TIME ───────── */
 let T = 0;
 
-/* ───────── EYE ───────── */
+/* ───────── EYE GEOMETRY ───────── */
 const eye = {
   x: () => w * 0.5,
   y: () => h * 0.45,
 
-  // pupil
+  // inner eye
   innerRX: 46,
   innerRY: 18,
 
-  // EXISTING ring (do not duplicate)
+  // SINGLE dashed ring band
   ringInner: 72,
   ringOuter: 98,
-
-  outerR: 62, // fractured halo
 
   blink: 1,
   blinkTarget: 1,
   nextBlink: performance.now() + 6000 + Math.random()*6000
 };
 
-/* ───────── LETTER FIELD (INSIDE EXISTING RING) ───────── */
+/* ───────── LETTER FIELD (INSIDE THE ONE RING) ───────── */
 const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789?!@#$";
 const letters = [];
-const LETTER_COUNT = 42;
+const LETTER_COUNT = 40;
 
 function initLetters(){
   letters.length = 0;
   for(let i=0;i<LETTER_COUNT;i++){
-    const a = Math.random()*Math.PI*2;
-    const r = eye.ringInner + Math.random()*(eye.ringOuter-eye.ringInner);
-
     letters.push({
-      a,
-      r,
-      va: (Math.random()-0.5)*0.002,
-      vr: (Math.random()-0.5)*0.4,
-      rot: Math.random()*Math.PI*2,
-      ch: CHARS[Math.floor(Math.random()*CHARS.length)]
+      a: Math.random() * Math.PI * 2,
+      r: eye.ringInner + Math.random() * (eye.ringOuter - eye.ringInner),
+      va: (Math.random() - 0.5) * 0.002,
+      vr: (Math.random() - 0.5) * 0.35,
+      rot: Math.random() * Math.PI * 2,
+      ch: CHARS[Math.floor(Math.random() * CHARS.length)]
     });
   }
 }
@@ -78,18 +73,18 @@ initLetters();
 
 function scrambleLetters(){
   letters.forEach(l=>{
-    l.va += (Math.random()-0.5)*0.004;
-    l.vr += (Math.random()-0.5)*0.8;
-    l.ch = CHARS[Math.floor(Math.random()*CHARS.length)];
+    l.va += (Math.random() - 0.5) * 0.004;
+    l.vr += (Math.random() - 0.5) * 0.6;
+    l.ch = CHARS[Math.floor(Math.random() * CHARS.length)];
   });
 }
 
-/* ───────── LETTER CHAOS (CLIPPED TO SAME RING) ───────── */
-function drawLetterBand(){
+/* ───────── LETTER CHAOS (CLIPPED TO RING BAND) ───────── */
+function drawLetters(){
   ctx.save();
   ctx.translate(eye.x(), eye.y());
 
-  // clip to EXISTING ring volume
+  // annulus clip (THIS defines the ring, nothing else)
   ctx.beginPath();
   ctx.arc(0,0,eye.ringOuter,0,Math.PI*2);
   ctx.arc(0,0,eye.ringInner,0,Math.PI*2,true);
@@ -104,7 +99,7 @@ function drawLetterBand(){
     l.r += l.vr;
     l.rot += 0.01;
 
-    // hard containment
+    // containment
     if(l.r < eye.ringInner){ l.r = eye.ringInner; l.vr *= -1; }
     if(l.r > eye.ringOuter){ l.r = eye.ringOuter; l.vr *= -1; }
 
@@ -115,11 +110,27 @@ function drawLetterBand(){
     ctx.translate(x,y);
     ctx.rotate(l.rot);
     ctx.fillStyle = "rgba(120,255,180,0.7)";
-    ctx.shadowColor = "rgba(120,255,180,0.45)";
-    ctx.shadowBlur = 10;
+    ctx.shadowColor = "rgba(120,255,180,0.4)";
+    ctx.shadowBlur = 8;
     ctx.fillText(l.ch,0,0);
     ctx.restore();
   });
+
+  ctx.restore();
+}
+
+/* ───────── SINGLE DASHED RING (ONLY RING DRAWN) ───────── */
+function drawRing(){
+  ctx.save();
+  ctx.translate(eye.x(), eye.y());
+
+  ctx.setLineDash([8,8]);
+  ctx.beginPath();
+  ctx.arc(0,0,(eye.ringInner + eye.ringOuter)/2,0,Math.PI*2);
+  ctx.strokeStyle = "rgba(120,255,180,0.35)";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.setLineDash([]);
 
   ctx.restore();
 }
@@ -136,58 +147,9 @@ function drawInnerEye(){
   ctx.ellipse(0,0,rx,ry,0,0,Math.PI*2);
   ctx.strokeStyle = "rgba(120,255,180,0.6)";
   ctx.lineWidth = 1.6;
-  ctx.shadowColor = "rgba(120,255,180,0.5)";
-  ctx.shadowBlur = 14;
+  ctx.shadowColor = "rgba(120,255,180,0.45)";
+  ctx.shadowBlur = 12;
   ctx.stroke();
-
-  ctx.restore();
-}
-
-/* ───────── EXISTING DASHED RING (ONLY ONE) ───────── */
-function drawDashedRing(){
-  ctx.save();
-  ctx.translate(eye.x(), eye.y());
-
-  ctx.setLineDash([8,8]);
-  ctx.beginPath();
-  ctx.arc(0,0,(eye.ringInner+eye.ringOuter)/2,0,Math.PI*2);
-  ctx.strokeStyle = "rgba(120,255,180,0.35)";
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-  ctx.restore();
-}
-
-/* ───────── FRACTURED OUTER HALO ───────── */
-function drawOuterRing(){
-  ctx.save();
-  ctx.translate(eye.x(), eye.y());
-
-  const breathe = Math.sin(T * 0.6) * 6;
-  const twist = Math.sin(T * 0.35) * 0.25;
-  ctx.rotate(twist);
-
-  const segments = 22;
-
-  for(let i=0;i<segments;i++){
-    if(Math.random()<0.35) continue;
-
-    const a0 = (i/segments)*Math.PI*2;
-    const a1 = a0 + (Math.PI*2/segments)*(0.45+Math.random()*0.4);
-
-    ctx.beginPath();
-    ctx.arc(
-      0,0,
-      eye.outerR + breathe + Math.sin(T+i)*2,
-      a0,a1
-    );
-    ctx.strokeStyle = "rgba(120,255,180,0.45)";
-    ctx.lineWidth = 2;
-    ctx.shadowColor = "rgba(120,255,180,0.4)";
-    ctx.shadowBlur = 14;
-    ctx.stroke();
-  }
 
   ctx.restore();
 }
@@ -197,7 +159,7 @@ function loop(){
   ctx.clearRect(0,0,w,h);
   T += 0.003;
 
-  // blink logic
+  // blink
   if(performance.now() > eye.nextBlink && eye.blinkTarget === 1){
     eye.blinkTarget = 0;
     scrambleLetters();
@@ -208,10 +170,9 @@ function loop(){
   }
   eye.blink += (eye.blinkTarget - eye.blink) * 0.08;
 
-  drawLetterBand();   // chaos inside SAME ring
-  drawDashedRing();   // original ring
-  drawInnerEye();
-  drawOuterRing();
+  drawLetters();   // chaos inside ring
+  drawRing();      // ONE ring
+  drawInnerEye();  // pupil
 
   requestAnimationFrame(loop);
 }
