@@ -37,17 +37,23 @@ let T = 0;
 const eye = {
   x: () => w * 0.5,
   y: () => h * 0.45,
+
+  // pupil
   innerRX: 46,
   innerRY: 18,
-  outerR: 62,
-  bandInner: 72,   // inside dashed ring
-  bandOuter: 98,   // outside dashed ring
+
+  // EXISTING ring (do not duplicate)
+  ringInner: 72,
+  ringOuter: 98,
+
+  outerR: 62, // fractured halo
+
   blink: 1,
   blinkTarget: 1,
   nextBlink: performance.now() + 6000 + Math.random()*6000
 };
 
-/* ───────── LETTER FIELD (RING BAND CHAOS) ───────── */
+/* ───────── LETTER FIELD (INSIDE EXISTING RING) ───────── */
 const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789?!@#$";
 const letters = [];
 const LETTER_COUNT = 42;
@@ -56,12 +62,12 @@ function initLetters(){
   letters.length = 0;
   for(let i=0;i<LETTER_COUNT;i++){
     const a = Math.random()*Math.PI*2;
-    const r = eye.bandInner + Math.random()*(eye.bandOuter-eye.bandInner);
+    const r = eye.ringInner + Math.random()*(eye.ringOuter-eye.ringInner);
 
     letters.push({
       a,
       r,
-      vx: (Math.random()-0.5)*0.002,
+      va: (Math.random()-0.5)*0.002,
       vr: (Math.random()-0.5)*0.4,
       rot: Math.random()*Math.PI*2,
       ch: CHARS[Math.floor(Math.random()*CHARS.length)]
@@ -72,21 +78,21 @@ initLetters();
 
 function scrambleLetters(){
   letters.forEach(l=>{
-    l.vx += (Math.random()-0.5)*0.004;
+    l.va += (Math.random()-0.5)*0.004;
     l.vr += (Math.random()-0.5)*0.8;
     l.ch = CHARS[Math.floor(Math.random()*CHARS.length)];
   });
 }
 
-/* ───────── DRAW LETTER BAND (CLIPPED ANNULUS) ───────── */
+/* ───────── LETTER CHAOS (CLIPPED TO SAME RING) ───────── */
 function drawLetterBand(){
   ctx.save();
   ctx.translate(eye.x(), eye.y());
 
-  // --- annulus clip ---
+  // clip to EXISTING ring volume
   ctx.beginPath();
-  ctx.arc(0,0,eye.bandOuter,0,Math.PI*2);
-  ctx.arc(0,0,eye.bandInner,0,Math.PI*2,true);
+  ctx.arc(0,0,eye.ringOuter,0,Math.PI*2);
+  ctx.arc(0,0,eye.ringInner,0,Math.PI*2,true);
   ctx.clip();
 
   ctx.font = "14px monospace";
@@ -94,13 +100,13 @@ function drawLetterBand(){
   ctx.textBaseline = "middle";
 
   letters.forEach(l=>{
-    l.a += l.vx;
+    l.a += l.va;
     l.r += l.vr;
     l.rot += 0.01;
 
-    // containment physics
-    if(l.r < eye.bandInner){ l.r = eye.bandInner; l.vr *= -1; }
-    if(l.r > eye.bandOuter){ l.r = eye.bandOuter; l.vr *= -1; }
+    // hard containment
+    if(l.r < eye.ringInner){ l.r = eye.ringInner; l.vr *= -1; }
+    if(l.r > eye.ringOuter){ l.r = eye.ringOuter; l.vr *= -1; }
 
     const x = Math.cos(l.a) * l.r;
     const y = Math.sin(l.a) * l.r;
@@ -137,14 +143,14 @@ function drawInnerEye(){
   ctx.restore();
 }
 
-/* ───────── DASHED RING ───────── */
+/* ───────── EXISTING DASHED RING (ONLY ONE) ───────── */
 function drawDashedRing(){
   ctx.save();
   ctx.translate(eye.x(), eye.y());
 
   ctx.setLineDash([8,8]);
   ctx.beginPath();
-  ctx.arc(0,0,(eye.bandInner+eye.bandOuter)/2,0,Math.PI*2);
+  ctx.arc(0,0,(eye.ringInner+eye.ringOuter)/2,0,Math.PI*2);
   ctx.strokeStyle = "rgba(120,255,180,0.35)";
   ctx.lineWidth = 1.5;
   ctx.stroke();
@@ -153,7 +159,7 @@ function drawDashedRing(){
   ctx.restore();
 }
 
-/* ───────── OUTER FRACTURE ───────── */
+/* ───────── FRACTURED OUTER HALO ───────── */
 function drawOuterRing(){
   ctx.save();
   ctx.translate(eye.x(), eye.y());
@@ -202,8 +208,8 @@ function loop(){
   }
   eye.blink += (eye.blinkTarget - eye.blink) * 0.08;
 
-  drawLetterBand();   // 🔥 chaos INSIDE ring
-  drawDashedRing();
+  drawLetterBand();   // chaos inside SAME ring
+  drawDashedRing();   // original ring
   drawInnerEye();
   drawOuterRing();
 
