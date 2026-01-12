@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Presence</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: radial-gradient(circle at center, #020812, #000);
+    overflow: hidden;
+  }
+
+  canvas {
+    display: block;
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<script>
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
+
+let w, h;
+function resize() {
+  w = canvas.width = window.innerWidth;
+  h = canvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resize);
+resize();
+
+// presence state
+let dot = {
+  x: w * 0.5,
+  y: h * 0.5,
+  tx: w * 0.5,
+  ty: h * 0.5,
+  r: 6,
+  glow: 18,
+  phase: 0,
+  pauseUntil: 0
+};
+
+function chooseTarget() {
+  dot.tx = w * (0.2 + Math.random() * 0.6);
+  dot.ty = h * (0.2 + Math.random() * 0.6);
+  dot.pauseUntil = performance.now() + 1000 + Math.random() * 2000;
+}
+
+chooseTarget();
+
+function drawDot() {
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+
+  const g = ctx.createRadialGradient(
+    dot.x, dot.y, 0,
+    dot.x, dot.y, dot.glow
+  );
+  g.addColorStop(0, "rgba(160,220,255,0.8)");
+  g.addColorStop(1, "rgba(160,220,255,0)");
+
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(dot.x, dot.y, dot.glow, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function drawSwoosh(px, py) {
+  ctx.strokeStyle = "rgba(120,180,255,0.08)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(px, py);
+  ctx.quadraticCurveTo(
+    (px + dot.x) / 2 + Math.random() * 40 - 20,
+    (py + dot.y) / 2 + Math.random() * 40 - 20,
+    dot.x, dot.y
+  );
+  ctx.stroke();
+}
+
+let lastX = dot.x;
+let lastY = dot.y;
+
+function loop(t) {
+  ctx.clearRect(0, 0, w, h);
+
+  const now = performance.now();
+
+  // gentle movement
+  if (now > dot.pauseUntil) {
+    dot.x += (dot.tx - dot.x) * 0.015;
+    dot.y += (dot.ty - dot.y) * 0.015;
+
+    if (Math.hypot(dot.tx - dot.x, dot.ty - dot.y) < 8) {
+      chooseTarget();
+    }
+  }
+
+  // subtle hover breathing
+  dot.phase += 0.01;
+  const hover = Math.sin(dot.phase) * 0.8;
+
+  drawSwoosh(lastX, lastY);
+  drawDot();
+
+  lastX = dot.x;
+  lastY = dot.y;
+
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+</body>
+</html>
