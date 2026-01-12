@@ -2,20 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Olly — Functional Peak</title>
+<title>Olly — String</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <style>
 html, body {
   margin: 0;
   padding: 0;
   height: 100%;
-  background: radial-gradient(
-    circle at center,
-    #07182f 0%,
-    #051226 45%,
-    #030c1b 75%,
-    #010610 100%
-  );
+  background: transparent;
   overflow: hidden;
 }
 canvas { display:block; }
@@ -36,132 +30,88 @@ function resize(){
 addEventListener("resize", resize);
 resize();
 
-/* ───────── OLLY STATE ───────── */
-const olly = {
-  x: w*0.5, y: h*0.5,
-  vx: 0, vy: 0,
-  rBase: Math.min(w,h)*0.22,
-  breath: Math.random()*Math.PI*2,
-  nextPush: performance.now()+1600
+/* ───────── MOTION SOURCE (ARM / BODY) ───────── */
+const motion = {
+  x: w*0.5,
+  y: h*0.5,
+  vx: 0,
+  vy: 0,
+  nextDrift: performance.now() + 1600
 };
 
-/* ───────── FIELD PHASES ───────── */
-const field = {
-  a: Math.random()*Math.PI*2,
-  b: Math.random()*Math.PI*2
-};
+function drift(){
+  const a = Math.random()*Math.PI*2;
+  const f = 0.15 + Math.random()*0.35;
+  motion.vx += Math.cos(a)*f;
+  motion.vy += Math.sin(a)*f;
+  motion.nextDrift = performance.now() + 1800 + Math.random()*2200;
+}
 
-/* ───────── SKATE PUSH ───────── */
-function skatePush(){
-  const angle = Math.random()*Math.PI*2;
-  const force = 0.6 + Math.random()*0.9;
-  olly.vx += Math.cos(angle)*force;
-  olly.vy += Math.sin(angle)*force;
-  olly.nextPush = performance.now() + 1800 + Math.random()*2600;
+/* ───────── PARTICLES (STRING SEGMENTS) ───────── */
+const COUNT = 160;
+const particles = [];
+
+for(let i=0;i<COUNT;i++){
+  particles.push({
+    x: Math.random()*w,
+    y: Math.random()*h,
+    vy: 0.4 + Math.random()*0.8,
+    sway: Math.random()*Math.PI*2,
+    len: 10 + Math.random()*22,
+    alpha: 0.05 + Math.random()*0.08
+  });
 }
 
 /* ───────── UPDATE ───────── */
 function update(){
-  if(performance.now() > olly.nextPush) skatePush();
+  if(performance.now() > motion.nextDrift) drift();
 
-  // friction (functional)
-  olly.vx *= 0.985;
-  olly.vy *= 0.985;
+  motion.vx *= 0.985;
+  motion.vy *= 0.985;
+  motion.x += motion.vx;
+  motion.y += motion.vy;
 
-  olly.x += olly.vx;
-  olly.y += olly.vy;
+  const speed = Math.hypot(motion.vx, motion.vy);
 
-  // soft bounds
-  const m = Math.min(w,h)*0.15;
-  if(olly.x<m || olly.x>w-m) olly.vx *= -0.5;
-  if(olly.y<m || olly.y>h-m) olly.vy *= -0.5;
+  particles.forEach(p=>{
+    p.sway += 0.02 + speed*0.08;
+    p.y += p.vy + speed*0.4;
 
-  olly.breath += 0.002;
+    // string lag (this is the finesse)
+    p.x += Math.sin(p.sway) * (0.3 + speed*1.2);
 
-  // field time
-  field.a += 0.00025;
-  field.b += 0.00018;
+    if(p.y > h + 40){
+      p.y = -40;
+      p.x = Math.random()*w;
+    }
+  });
 }
 
-/* ───────── DRAW AIR (SCALES WITH SPEED) ───────── */
-function drawAir(){
-  const speed = Math.hypot(olly.vx, olly.vy);
-  const intensity = Math.min(speed / 2.2, 1); // ← functional peak
-
-  const inhale = (Math.sin(field.a)+1)*0.5;
-  const sway = Math.sin(field.b)*30*intensity;
-
-  const R = olly.rBase * (3.2 + inhale*1.1 + intensity*1.2);
-  const alpha = 0.06 + inhale*0.08 + intensity*0.12;
-
+/* ───────── DRAW ───────── */
+function draw(){
+  ctx.clearRect(0,0,w,h);
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
 
-  const grad = ctx.createRadialGradient(
-    olly.x + sway,
-    olly.y - sway,
-    olly.rBase*0.15,
-    olly.x,
-    olly.y,
-    R
-  );
+  particles.forEach(p=>{
+    const dx = Math.sin(p.sway) * p.len;
+    const dy = p.len;
 
-  grad.addColorStop(0, `rgba(120,255,180,${alpha})`);
-  grad.addColorStop(0.55, `rgba(120,255,180,${alpha*0.45})`);
-  grad.addColorStop(1, `rgba(120,255,180,0)`);
+    ctx.strokeStyle = `rgba(120,255,180,${p.alpha})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(p.x + dx, p.y + dy);
+    ctx.stroke();
+  });
 
-  ctx.fillStyle = grad;
-  ctx.beginPath();
-  ctx.arc(olly.x, olly.y, R, 0, Math.PI*2);
-  ctx.fill();
-
-  ctx.restore();
-}
-
-/* ───────── DRAW OLLY CORE ───────── */
-function drawOlly(){
-  const inhale = (Math.sin(olly.breath)+1)*0.5;
-  const r = olly.rBase * (0.8 + inhale*0.3);
-  const a = 0.08 + inhale*0.12;
-
-  ctx.save();
-  ctx.globalCompositeOperation = "lighter";
-
-  const grad = ctx.createRadialGradient(
-    olly.x, olly.y, r*0.12,
-    olly.x, olly.y, r
-  );
-
-  grad.addColorStop(0, `rgba(120,255,180,${a})`);
-  grad.addColorStop(0.6, `rgba(120,255,180,${a*0.4})`);
-  grad.addColorStop(1, `rgba(120,255,180,0)`);
-
-  ctx.fillStyle = grad;
-  ctx.beginPath();
-  ctx.arc(olly.x, olly.y, r, 0, Math.PI*2);
-  ctx.fill();
-
-  ctx.restore();
-}
-
-/* ───────── GRAIN ───────── */
-function grain(){
-  ctx.save();
-  ctx.globalCompositeOperation = "overlay";
-  ctx.fillStyle = "rgba(255,255,255,0.014)";
-  for(let i=0;i<80;i++){
-    ctx.fillRect(Math.random()*w, Math.random()*h, 1, 1);
-  }
   ctx.restore();
 }
 
 /* ───────── LOOP ───────── */
 function loop(){
-  ctx.clearRect(0,0,w,h);
   update();
-  drawAir();
-  drawOlly();
-  grain();
+  draw();
   requestAnimationFrame(loop);
 }
 loop();
