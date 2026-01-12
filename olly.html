@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Olly — WiFi Air</title>
+<title>Olly — WiFi Air (Slow)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <style>
 html, body {
@@ -36,11 +36,11 @@ const air = {
   vy: 0
 };
 function pushAir(){
-  // long, lateral “swoosh” pushes
-  air.vx += (Math.random()>0.5?1:-1) * (1.2 + Math.random()*1.6);
-  air.vy += (Math.random()-0.5) * 0.3;
+  // softer, longer pushes
+  air.vx += (Math.random()>0.5?1:-1) * (0.8 + Math.random()*1.1);
+  air.vy += (Math.random()-0.5) * 0.18;
 }
-let nextPush = performance.now() + 1200;
+let nextPush = performance.now() + 2200; // ⬅ slower cadence
 
 /* ───────── WIFI ARCS (GRADIENTS ONLY) ───────── */
 const ARC_COUNT = 22;
@@ -58,26 +58,26 @@ for(let i=0;i<ARC_COUNT;i++){
 function update(){
   if(performance.now() > nextPush){
     pushAir();
-    nextPush = performance.now() + 1400 + Math.random()*2200;
+    nextPush = performance.now() + 2400 + Math.random()*3600; // ⬅ slower transitions
   }
 
-  // air inertia
-  air.vx *= 0.97;
-  air.vy *= 0.97;
+  // heavier inertia = slower change
+  air.vx *= 0.985;   // ⬅ was 0.97
+  air.vy *= 0.985;
 
   const speed = Math.hypot(air.vx, air.vy);
 
   arcs.forEach(a=>{
-    // NO spin — arc angle drifts linearly with air
-    a.drift += speed * 0.002;
-    a.a += air.vx * 0.0008; // gentle direction bias
+    // slower angular response
+    a.drift += speed * 0.001;      // ⬅ half speed
+    a.a     += air.vx * 0.0004;    // ⬅ half bias
   });
 }
 
 /* ───────── DRAW (AFTERGLOW, GREEN SHADES) ───────── */
 function draw(){
-  // motion blur via accumulation (green-tinted fade)
-  ctx.fillStyle = "rgba(0,18,8,0.08)";
+  // longer memory = smoother transitions
+  ctx.fillStyle = "rgba(0,18,8,0.06)"; // ⬅ was 0.08
   ctx.fillRect(0,0,w,h);
 
   ctx.save();
@@ -88,7 +88,6 @@ function draw(){
     const start = a.a - 0.7;
     const end   = a.a + 0.7;
 
-    // soft radial gradient arc (NO STROKE)
     const grad = ctx.createRadialGradient(
       0, 0, a.r-18,
       0, 0, a.r+18
