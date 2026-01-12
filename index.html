@@ -5,17 +5,14 @@
 <title>Presence</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <style>
-  html, body {
-    margin: 0;
-    padding: 0;
-    height: 100%;
-    background: radial-gradient(circle at center, #020812, #000);
-    overflow: hidden;
-  }
-
-  canvas {
-    display: block;
-  }
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: radial-gradient(circle at center, #020812, #000);
+  overflow: hidden;
+}
+canvas { display:block; }
 </style>
 </head>
 <body>
@@ -25,94 +22,131 @@
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
 
-let w, h;
-function resize() {
-  w = canvas.width = window.innerWidth;
-  h = canvas.height = window.innerHeight;
+let w,h;
+function resize(){
+  w = canvas.width = innerWidth;
+  h = canvas.height = innerHeight;
 }
-window.addEventListener("resize", resize);
+addEventListener("resize", resize);
 resize();
 
-// presence state
-let dot = {
-  x: w * 0.5,
-  y: h * 0.5,
-  tx: w * 0.5,
-  ty: h * 0.5,
-  r: 6,
-  glow: 18,
-  phase: 0,
-  pauseUntil: 0
+// ─── Eye ─────────────────────────────
+const eye = {
+  x: w*0.5,
+  y: h*0.5,
+  rx: 32,
+  ry: 14,
+  blink: 1,
+  blinkTarget: 1,
+  nextBlink: performance.now() + 8000 + Math.random()*7000
 };
 
-function chooseTarget() {
-  dot.tx = w * (0.2 + Math.random() * 0.6);
-  dot.ty = h * (0.2 + Math.random() * 0.6);
-  dot.pauseUntil = performance.now() + 1000 + Math.random() * 2000;
+// ─── Motion Path ─────────────────────
+let path = {};
+let resting = true;
+let restUntil = 0;
+
+function newPath(){
+  const sx = eye.x;
+  const sy = eye.y;
+
+  const ex = w * (0.18 + Math.random()*0.64);
+  const ey = h * (0.38 + Math.random()*0.24);
+
+  const dx = ex - sx;
+
+  path = {
+    sx, sy, ex, ey,
+    c1x: sx + dx * 0.25,
+    c1y: sy - (20 + Math.random()*40),
+    c2x: sx + dx * 0.75,
+    c2y: ey - (15 + Math.random()*35),
+    start: performance.now(),
+    dur: 1300 + Math.random()*900 // slower darts
+  };
+
+  resting = false;
 }
 
-chooseTarget();
-
-function drawDot() {
-  ctx.save();
-  ctx.globalCompositeOperation = "lighter";
-
-  const g = ctx.createRadialGradient(
-    dot.x, dot.y, 0,
-    dot.x, dot.y, dot.glow
+// cubic bezier
+function bezier(t,p0,p1,p2,p3){
+  const u = 1-t;
+  return (
+    u*u*u*p0 +
+    3*u*u*t*p1 +
+    3*u*t*t*p2 +
+    t*t*t*p3
   );
-  g.addColorStop(0, "rgba(160,220,255,0.8)");
-  g.addColorStop(1, "rgba(160,220,255,0)");
+}
 
+// ─── Draw Eye ─────────────────────────
+function drawEye(){
+  ctx.save();
+  ctx.translate(eye.x, eye.y);
+  ctx.scale(1, eye.blink);
+
+  const g = ctx.createRadialGradient(0,0,0,0,0,32);
+  g.addColorStop(0,"rgba(130,190,240,0.14)");
+  g.addColorStop(1,"rgba(130,190,240,0)");
   ctx.fillStyle = g;
   ctx.beginPath();
-  ctx.arc(dot.x, dot.y, dot.glow, 0, Math.PI * 2);
+  ctx.ellipse(0,0,eye.rx*1.6,eye.ry*1.6,0,0,Math.PI*2);
+  ctx.fill();
+
+  ctx.fillStyle = "rgba(215,235,250,0.85)";
+  ctx.beginPath();
+  ctx.ellipse(0,0,eye.rx,eye.ry,0,0,Math.PI*2);
+  ctx.fill();
+
+  ctx.fillStyle = "rgba(90,130,170,0.85)";
+  ctx.beginPath();
+  ctx.arc(0,0,6,0,Math.PI*2);
+  ctx.fill();
+
+  ctx.fillStyle = "rgba(15,25,35,0.95)";
+  ctx.beginPath();
+  ctx.arc(0,0,2.8,0,Math.PI*2);
   ctx.fill();
 
   ctx.restore();
 }
 
-function drawSwoosh(px, py) {
-  ctx.strokeStyle = "rgba(120,180,255,0.08)";
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(px, py);
-  ctx.quadraticCurveTo(
-    (px + dot.x) / 2 + Math.random() * 40 - 20,
-    (py + dot.y) / 2 + Math.random() * 40 - 20,
-    dot.x, dot.y
-  );
-  ctx.stroke();
-}
-
-let lastX = dot.x;
-let lastY = dot.y;
-
-function loop(t) {
-  ctx.clearRect(0, 0, w, h);
-
+// ─── Loop ─────────────────────────────
+function loop(){
+  ctx.clearRect(0,0,w,h);
   const now = performance.now();
 
-  // gentle movement
-  if (now > dot.pauseUntil) {
-    dot.x += (dot.tx - dot.x) * 0.015;
-    dot.y += (dot.ty - dot.y) * 0.015;
+  if(!resting){
+    const t = Math.min((now - path.start)/path.dur, 1);
 
-    if (Math.hypot(dot.tx - dot.x, dot.ty - dot.y) < 8) {
-      chooseTarget();
+    // extra soft easing
+    const ease = t*t*(3 - 2*t);
+
+    eye.x = bezier(ease,path.sx,path.c1x,path.c2x,path.ex);
+    eye.y = bezier(ease,path.sy,path.c1y,path.c2y,path.ey);
+
+    if(t >= 1){
+      resting = true;
+      restUntil = now + 1200 + Math.random()*1800; // longer hover
+    }
+  } else if(now > restUntil){
+    newPath();
+  }
+
+  // blink ONLY while resting
+  if(resting){
+    if(now > eye.nextBlink && eye.blinkTarget === 1){
+      eye.blinkTarget = 0;
+    }
+    if(eye.blinkTarget === 0 && eye.blink < 0.05){
+      eye.blinkTarget = 1;
+      eye.nextBlink = now + 8000 + Math.random()*7000;
     }
   }
 
-  // subtle hover breathing
-  dot.phase += 0.01;
-  const hover = Math.sin(dot.phase) * 0.8;
+  eye.blink += (eye.blinkTarget - eye.blink) * 0.16;
 
-  drawSwoosh(lastX, lastY);
-  drawDot();
-
-  lastX = dot.x;
-  lastY = dot.y;
-
+  drawEye();
   requestAnimationFrame(loop);
 }
 
