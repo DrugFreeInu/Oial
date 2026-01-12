@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Olly — Afterglow</title>
+<title>Olly — WiFi Air</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <style>
 html, body {
@@ -30,92 +30,79 @@ function resize(){
 addEventListener("resize", resize);
 resize();
 
-/* ───────── CORE MOTION (BODY SHIFT) ───────── */
-const core = {
-  x: w*0.5,
-  y: h*0.5,
+/* ───────── AIR FIELD (LINEAR, NO ROTATION) ───────── */
+const air = {
   vx: 0,
   vy: 0
 };
-
-function push(){
-  core.vx += (Math.random()-0.5) * 1.4;
-  core.vy += (Math.random()-0.5) * 0.9;
+function pushAir(){
+  // long, lateral “swoosh” pushes
+  air.vx += (Math.random()>0.5?1:-1) * (1.2 + Math.random()*1.6);
+  air.vy += (Math.random()-0.5) * 0.3;
 }
-let nextPush = performance.now() + 900;
+let nextPush = performance.now() + 1200;
 
-/* ───────── PARTICLES (MANE / GRASS) ───────── */
-const COUNT = 220;
-const particles = [];
-
-for(let i=0;i<COUNT;i++){
-  particles.push({
-    ox: (Math.random()-0.5) * Math.min(w,h)*0.22,
-    oy: (Math.random()-0.5) * Math.min(w,h)*0.22,
-    x: 0,
-    y: 0,
-    sway: Math.random()*Math.PI*2,
-    len: 12 + Math.random()*26,
-    alpha: 0.12 + Math.random()*0.18
+/* ───────── WIFI ARCS (GRADIENTS ONLY) ───────── */
+const ARC_COUNT = 22;
+const arcs = [];
+for(let i=0;i<ARC_COUNT;i++){
+  arcs.push({
+    r: 40 + i*22 + Math.random()*8,
+    a: Math.random()*Math.PI*2,
+    drift: Math.random()*Math.PI*2,
+    strength: 0.6 + Math.random()*0.8
   });
 }
 
 /* ───────── UPDATE ───────── */
 function update(){
   if(performance.now() > nextPush){
-    push();
-    nextPush = performance.now() + 900 + Math.random()*1600;
+    pushAir();
+    nextPush = performance.now() + 1400 + Math.random()*2200;
   }
 
-  core.vx *= 0.97;   // ← heavier inertia
-  core.vy *= 0.97;
+  // air inertia
+  air.vx *= 0.97;
+  air.vy *= 0.97;
 
-  const speed = Math.hypot(core.vx, core.vy);
+  const speed = Math.hypot(air.vx, air.vy);
 
-  particles.forEach(p=>{
-    p.sway += 0.04 + speed*0.14;
-
-    const tx =
-      p.ox +
-      Math.sin(p.sway) * (1.6 + speed*3.2) +
-      core.vx * 10;
-
-    const ty =
-      p.oy +
-      Math.cos(p.sway*0.9) * (1.2 + speed*2.6) +
-      core.vy * 10;
-
-    // inertia / lag (important)
-    p.x += (tx - p.x) * 0.12;
-    p.y += (ty - p.y) * 0.12;
+  arcs.forEach(a=>{
+    // NO spin — arc angle drifts linearly with air
+    a.drift += speed * 0.002;
+    a.a += air.vx * 0.0008; // gentle direction bias
   });
 }
 
-/* ───────── DRAW WITH TRUE MOTION BLUR ───────── */
+/* ───────── DRAW (AFTERGLOW, GREEN SHADES) ───────── */
 function draw(){
-  // THIS IS THE KEY: fade, don't clear
-  ctx.fillStyle = "rgba(255,255,255,0.06)"; 
+  // motion blur via accumulation (green-tinted fade)
+  ctx.fillStyle = "rgba(0,18,8,0.08)";
   ctx.fillRect(0,0,w,h);
 
   ctx.save();
   ctx.translate(w*0.5, h*0.5);
-  ctx.globalCompositeOperation = "multiply";
+  ctx.globalCompositeOperation = "lighter";
 
-  particles.forEach(p=>{
-    const grad = ctx.createLinearGradient(
-      p.x, p.y,
-      p.x, p.y + p.len*2
+  arcs.forEach(a=>{
+    const start = a.a - 0.7;
+    const end   = a.a + 0.7;
+
+    // soft radial gradient arc (NO STROKE)
+    const grad = ctx.createRadialGradient(
+      0, 0, a.r-18,
+      0, 0, a.r+18
     );
+    grad.addColorStop(0, `rgba(90,220,150,${0.10*a.strength})`);
+    grad.addColorStop(0.5, `rgba(90,220,150,${0.22*a.strength})`);
+    grad.addColorStop(1, `rgba(90,220,150,0)`);
 
-    grad.addColorStop(0, `rgba(40,120,90,${p.alpha})`);
-    grad.addColorStop(1, `rgba(40,120,90,0)`);
-
-    ctx.strokeStyle = grad;
-    ctx.lineWidth = 1.2;
+    ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.moveTo(p.x, p.y);
-    ctx.lineTo(p.x, p.y + p.len);
-    ctx.stroke();
+    ctx.moveTo(0,0);
+    ctx.arc(0,0,a.r,start,end);
+    ctx.closePath();
+    ctx.fill();
   });
 
   ctx.restore();
