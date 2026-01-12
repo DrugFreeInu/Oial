@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Olly — WiFi Air (Slow)</title>
+<title>Olly — WiFi Air (Soft)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <style>
 html, body {
@@ -30,54 +30,52 @@ function resize(){
 addEventListener("resize", resize);
 resize();
 
-/* ───────── AIR FIELD (LINEAR, NO ROTATION) ───────── */
-const air = {
-  vx: 0,
-  vy: 0
-};
+/* ───────── AIR FIELD (ULTRA SLOW) ───────── */
+const air = { vx: 0, vy: 0 };
 function pushAir(){
-  // softer, longer pushes
-  air.vx += (Math.random()>0.5?1:-1) * (0.8 + Math.random()*1.1);
-  air.vy += (Math.random()-0.5) * 0.18;
+  air.vx += (Math.random()>0.5?1:-1) * (0.15 + Math.random()*0.25);
+  air.vy += (Math.random()-0.5) * 0.06;
 }
-let nextPush = performance.now() + 2200; // ⬅ slower cadence
+let nextPush = performance.now() + 12000;
 
-/* ───────── WIFI ARCS (GRADIENTS ONLY) ───────── */
+/* ───────── WIFI BANDS (SOFT) ───────── */
 const ARC_COUNT = 22;
 const arcs = [];
 for(let i=0;i<ARC_COUNT;i++){
   arcs.push({
     r: 40 + i*22 + Math.random()*8,
     a: Math.random()*Math.PI*2,
-    drift: Math.random()*Math.PI*2,
+    wobble: Math.random()*Math.PI*2,
     strength: 0.6 + Math.random()*0.8
   });
 }
 
+let t = Math.random()*1000;
+
 /* ───────── UPDATE ───────── */
 function update(){
+  t += 0.15;
+
   if(performance.now() > nextPush){
     pushAir();
-    nextPush = performance.now() + 2400 + Math.random()*3600; // ⬅ slower transitions
+    nextPush = performance.now() + 14000 + Math.random()*20000;
   }
 
-  // heavier inertia = slower change
-  air.vx *= 0.985;   // ⬅ was 0.97
-  air.vy *= 0.985;
+  air.vx *= 0.995;
+  air.vy *= 0.995;
 
   const speed = Math.hypot(air.vx, air.vy);
 
   arcs.forEach(a=>{
-    // slower angular response
-    a.drift += speed * 0.001;      // ⬅ half speed
-    a.a     += air.vx * 0.0004;    // ⬅ half bias
+    a.a += air.vx * 0.00008;
+    a.wobble += 0.001 + speed*0.002;
   });
 }
 
-/* ───────── DRAW (AFTERGLOW, GREEN SHADES) ───────── */
+/* ───────── DRAW (ORGANIC AIR) ───────── */
 function draw(){
-  // longer memory = smoother transitions
-  ctx.fillStyle = "rgba(0,18,8,0.06)"; // ⬅ was 0.08
+  // long memory
+  ctx.fillStyle = "rgba(0,18,8,0.03)";
   ctx.fillRect(0,0,w,h);
 
   ctx.save();
@@ -85,21 +83,26 @@ function draw(){
   ctx.globalCompositeOperation = "lighter";
 
   arcs.forEach(a=>{
-    const start = a.a - 0.7;
-    const end   = a.a + 0.7;
+    const baseWidth = 0.7;
+    const edgeNoise = Math.sin(a.wobble + t*0.002) * 0.25;
+
+    const start = a.a - baseWidth - edgeNoise;
+    const end   = a.a + baseWidth + edgeNoise;
 
     const grad = ctx.createRadialGradient(
-      0, 0, a.r-18,
-      0, 0, a.r+18
+      0, 0, a.r - 26,
+      0, 0, a.r + 26
     );
-    grad.addColorStop(0, `rgba(90,220,150,${0.10*a.strength})`);
-    grad.addColorStop(0.5, `rgba(90,220,150,${0.22*a.strength})`);
+
+    grad.addColorStop(0, `rgba(90,220,150,${0.08*a.strength})`);
+    grad.addColorStop(0.4, `rgba(90,220,150,${0.18*a.strength})`);
+    grad.addColorStop(0.7, `rgba(90,220,150,${0.10*a.strength})`);
     grad.addColorStop(1, `rgba(90,220,150,0)`);
 
     ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.moveTo(0,0);
     ctx.arc(0,0,a.r,start,end);
+    ctx.arc(0,0,a.r+34,end,start,true);
     ctx.closePath();
     ctx.fill();
   });
