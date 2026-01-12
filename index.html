@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>A-eye</title>
+<title>A-eye-magic</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <style>
 html, body {
@@ -36,7 +36,7 @@ let T = 0;
 /* ───────── EYE ───────── */
 const eye = {
   x: w * 0.5,
-  y: h * 0.45,        // NOT dead center
+  y: h * 0.45,
   px: w * 0.5,
   py: h * 0.45,
   rx: 32,
@@ -56,7 +56,7 @@ function archEase(t){
     : 1 - Math.pow(-2*t+2,3)/2;
 }
 
-/* ───────── TRAILS (AIR) ───────── */
+/* ───────── AIR TRAILS ───────── */
 const trails = [];
 const MAX_TRAILS = 340;
 
@@ -71,6 +71,45 @@ function spawnAir(x, y, vx){
     life: 1
   });
   if(trails.length > MAX_TRAILS) trails.shift();
+}
+
+/* ───────── FRACTURED RING ───────── */
+const ring = {
+  radius: 62,
+  thickness: 2,
+  segments: 18,
+  jitter: 0.15
+};
+
+function drawFracturedRing(cx, cy, sway){
+  ctx.save();
+  ctx.translate(cx, cy);
+
+  const baseRot = Math.sin(T * 0.4) * 0.15;
+
+  for(let i = 0; i < ring.segments; i++){
+    if(Math.random() < 0.35) continue; // fracture gaps
+
+    const a0 = (i / ring.segments) * Math.PI * 2 + baseRot;
+    const a1 = a0 + (Math.PI * 2 / ring.segments) * (0.6 + Math.random()*0.4);
+
+    ctx.beginPath();
+    ctx.arc(
+      0,
+      0,
+      ring.radius + Math.sin(T*0.8 + i)*2,
+      a0,
+      a1
+    );
+
+    ctx.strokeStyle = `rgba(255,190,140,0.18)`;
+    ctx.lineWidth = ring.thickness;
+    ctx.shadowColor = "rgba(255,170,120,0.35)";
+    ctx.shadowBlur = 10 + Math.sin(T+i)*4;
+    ctx.stroke();
+  }
+
+  ctx.restore();
 }
 
 /* ───────── MOTION PATH ───────── */
@@ -112,10 +151,9 @@ function drawTrails(){
   for(let i = trails.length-1; i >= 0; i--){
     const p = trails[i];
     p.life *= 0.965;
-
     p.x += p.vx;
     p.y += p.vy;
-    p.vy += 0.05; // gravity
+    p.vy += 0.05;
 
     const g = ctx.createRadialGradient(
       p.x, p.y, 0,
@@ -172,7 +210,8 @@ function loop(){
   ctx.clearRect(0,0,w,h);
   const now = performance.now();
 
-  // arched sway
+  T += 0.003;
+
   swayT += 0.0014 * swayDir;
   if(swayT >= 1){ swayT = 1; swayDir = -1; }
   if(swayT <= 0){ swayT = 0; swayDir = 1; }
@@ -187,7 +226,6 @@ function loop(){
   if(!resting){
     const t = Math.min((now - path.start)/path.dur, 1);
     const ease = t*t*(3 - 2*t);
-
     eye.x = bezier(ease,path.sx,path.c1x,path.c2x,path.ex);
     eye.y = bezier(ease,path.sy,path.c1y,path.c2y,path.ey);
 
@@ -202,7 +240,6 @@ function loop(){
     newPath();
   }
 
-  // blink only while resting
   if(resting){
     if(now > eye.nextBlink && eye.blinkTarget === 1){
       eye.blinkTarget = 0;
@@ -215,6 +252,7 @@ function loop(){
   eye.blink += (eye.blinkTarget - eye.blink) * 0.14;
 
   drawTrails();
+  drawFracturedRing(eye.x + swayX, eye.y + swayY, arc);
   drawEye(swayX, swayY);
 
   requestAnimationFrame(loop);
