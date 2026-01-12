@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Presence</title>
+<title>A-eye</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <style>
 html, body {
@@ -22,7 +22,7 @@ canvas { display:block; }
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
 
-let w,h;
+let w, h;
 function resize(){
   w = canvas.width = innerWidth;
   h = canvas.height = innerHeight;
@@ -30,10 +30,15 @@ function resize(){
 addEventListener("resize", resize);
 resize();
 
-// ─── EYE ─────────────────────────────
+/* ───────── TIME ───────── */
+let T = 0;
+
+/* ───────── EYE ───────── */
 const eye = {
-  x: w*0.5,
-  y: h*0.5,
+  x: w * 0.5,
+  y: h * 0.45,        // NOT dead center
+  px: w * 0.5,
+  py: h * 0.45,
   rx: 32,
   ry: 14,
   blink: 1,
@@ -41,26 +46,34 @@ const eye = {
   nextBlink: performance.now() + 8000 + Math.random()*7000
 };
 
-// ─── TRAILS ──────────────────────────
-const trails = [];
-const MAX_TRAILS = 360;
+/* ───────── ARCH SWAY ───────── */
+let swayT = 0;
+let swayDir = 1;
 
-function spawnTrail(x,y,type){
+function archEase(t){
+  return t < 0.5
+    ? 4*t*t*t
+    : 1 - Math.pow(-2*t+2,3)/2;
+}
+
+/* ───────── TRAILS (AIR) ───────── */
+const trails = [];
+const MAX_TRAILS = 340;
+
+function spawnAir(x, y, vx){
   trails.push({
-    x, y,
-    r: 12 + Math.random()*18,   // MUCH wider
-    a: 0.12 + Math.random()*0.08,
-    life: 1,
-    type,
-    vy: 0.4 + Math.random()*0.8,
-    angle: Math.random()*Math.PI*2,
-    radius: 28 + Math.random()*28,
-    driftX: (Math.random()-0.5)*0.4
+    x,
+    y,
+    vx: vx * 0.25,
+    vy: 0.6 + Math.random()*0.6,
+    r: 16 + Math.random()*22,
+    a: 0.12,
+    life: 1
   });
   if(trails.length > MAX_TRAILS) trails.shift();
 }
 
-// ─── MOTION PATH ─────────────────────
+/* ───────── MOTION PATH ───────── */
 let path = {};
 let resting = true;
 let restUntil = 0;
@@ -69,22 +82,21 @@ function newPath(){
   const sx = eye.x;
   const sy = eye.y;
   const ex = w * (0.18 + Math.random()*0.64);
-  const ey = h * (0.38 + Math.random()*0.24);
+  const ey = h * (0.35 + Math.random()*0.25);
   const dx = ex - sx;
 
   path = {
     sx, sy, ex, ey,
     c1x: sx + dx * 0.25,
-    c1y: sy - (30 + Math.random()*60),
+    c1y: sy - (40 + Math.random()*60),
     c2x: sx + dx * 0.75,
-    c2y: ey - (20 + Math.random()*50),
+    c2y: ey - (30 + Math.random()*50),
     start: performance.now(),
-    dur: 1400 + Math.random()*1200
+    dur: 1600 + Math.random()*1400
   };
   resting = false;
 }
 
-// cubic bezier
 function bezier(t,p0,p1,p2,p3){
   const u = 1-t;
   return (
@@ -95,29 +107,21 @@ function bezier(t,p0,p1,p2,p3){
   );
 }
 
-// ─── DRAW TRAILS ─────────────────────
+/* ───────── DRAW AIR ───────── */
 function drawTrails(){
-  for(let i=trails.length-1;i>=0;i--){
+  for(let i = trails.length-1; i >= 0; i--){
     const p = trails[i];
-    p.life *= 0.97;
+    p.life *= 0.965;
 
-    if(p.type === "fall"){
-      p.y += p.vy;
-      p.vy += 0.025;
-      p.x += p.driftX;
-    } else {
-      p.angle += 0.012;
-      p.x = eye.x + Math.cos(p.angle) * p.radius;
-      p.y = eye.y + Math.sin(p.angle) * p.radius;
-    }
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.05; // gravity
 
-    // soft gradient particle
     const g = ctx.createRadialGradient(
       p.x, p.y, 0,
       p.x, p.y, p.r * p.life
     );
     g.addColorStop(0, `rgba(255,180,130,${p.a * p.life})`);
-    g.addColorStop(0.6, `rgba(255,160,110,${p.a * p.life * 0.5})`);
     g.addColorStop(1, "rgba(255,160,110,0)");
 
     ctx.fillStyle = g;
@@ -125,14 +129,16 @@ function drawTrails(){
     ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI*2);
     ctx.fill();
 
-    if(p.life < 0.04 || p.y > h + 80) trails.splice(i,1);
+    if(p.life < 0.04 || p.y > h + 80){
+      trails.splice(i,1);
+    }
   }
 }
 
-// ─── DRAW EYE ─────────────────────────
-function drawEye(){
+/* ───────── DRAW EYE ───────── */
+function drawEye(offsetX, offsetY){
   ctx.save();
-  ctx.translate(eye.x, eye.y);
+  ctx.translate(eye.x + offsetX, eye.y + offsetY);
   ctx.scale(1, eye.blink);
 
   const g = ctx.createRadialGradient(0,0,0,0,0,36);
@@ -161,28 +167,39 @@ function drawEye(){
   ctx.restore();
 }
 
-// ─── LOOP ─────────────────────────────
+/* ───────── LOOP ───────── */
 function loop(){
   ctx.clearRect(0,0,w,h);
   const now = performance.now();
 
+  // arched sway
+  swayT += 0.0014 * swayDir;
+  if(swayT >= 1){ swayT = 1; swayDir = -1; }
+  if(swayT <= 0){ swayT = 0; swayDir = 1; }
+
+  const arc = archEase(swayT);
+  const swayX = (arc - 0.5) * 80;
+  const swayY = Math.sin(arc * Math.PI) * 26;
+
+  eye.px = eye.x;
+  eye.py = eye.y;
+
   if(!resting){
     const t = Math.min((now - path.start)/path.dur, 1);
     const ease = t*t*(3 - 2*t);
+
     eye.x = bezier(ease,path.sx,path.c1x,path.c2x,path.ex);
     eye.y = bezier(ease,path.sy,path.c1y,path.c2y,path.ey);
 
-    spawnTrail(eye.x, eye.y, "fall");
+    const vx = eye.x - eye.px;
+    spawnAir(eye.x + swayX, eye.y + swayY, vx);
 
     if(t >= 1){
       resting = true;
-      restUntil = now + 1600 + Math.random()*2200;
+      restUntil = now + 1800 + Math.random()*2400;
     }
-  } else {
-    if(trails.length < MAX_TRAILS * 0.7){
-      spawnTrail(eye.x, eye.y, "orbit");
-    }
-    if(now > restUntil) newPath();
+  } else if(now > restUntil){
+    newPath();
   }
 
   // blink only while resting
@@ -198,7 +215,8 @@ function loop(){
   eye.blink += (eye.blinkTarget - eye.blink) * 0.14;
 
   drawTrails();
-  drawEye();
+  drawEye(swayX, swayY);
+
   requestAnimationFrame(loop);
 }
 
