@@ -110,7 +110,7 @@ function drawLetterRing(){
   ctx.restore();
 }
 
-/* ───────── MASK INNER EYE (OCCLUSION) ───────── */
+/* ───────── MASK INNER EYE ───────── */
 function maskInnerEye(){
   ctx.save();
   ctx.translate(eye.x, eye.y);
@@ -127,7 +127,7 @@ function maskInnerEye(){
   ctx.globalCompositeOperation = "source-over";
 }
 
-/* ───────── INNER EYE (FOREGROUND) ───────── */
+/* ───────── INNER EYE ───────── */
 function drawInnerEye(){
   ctx.save();
   ctx.translate(eye.x, eye.y);
@@ -146,19 +146,20 @@ function drawInnerEye(){
   ctx.restore();
 }
 
-/* ───────── FRACTURED RING (ORIGINAL) ───────── */
+/* ───────── SPINNING OUTER RING ───────── */
 function drawOuterRing(){
   ctx.save();
   ctx.translate(eye.x, eye.y);
 
-  const breathe = Math.sin(T * 0.6) * 6;
-  const twist = Math.sin(T * 0.35) * 0.25;
-  ctx.rotate(twist);
+  // 🔑 smooth constant spin
+  const spin = T * 0.6;
+  ctx.rotate(spin);
 
+  const breathe = Math.sin(T * 0.6) * 6;
   const segments = 22;
 
   for(let i=0;i<segments;i++){
-    if(Math.random()<0.38) continue;
+    if(Math.random() < 0.38) continue;
 
     const a0 = (i/segments)*Math.PI*2;
     const a1 = a0 + (Math.PI*2/segments)*(0.5+Math.random()*0.5);
@@ -195,10 +196,10 @@ function loop(){
   }
   eye.blink += (eye.blinkTarget - eye.blink) * 0.08;
 
-  drawLetterRing();   // letters first
-  maskInnerEye();     // letters go UNDER eye
-  drawInnerEye();     // eye on top
-  drawOuterRing();    // ring unchanged
+  drawLetterRing();
+  maskInnerEye();
+  drawInnerEye();
+  drawOuterRing(); // ⟳ spinning ring
 
   requestAnimationFrame(loop);
 }
