@@ -45,9 +45,9 @@ const eye = {
 };
 
 /* ───────── LETTER FIELD ───────── */
-const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789?!@#$";
+const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789?!@#$%&*+-=/<>[]{}";
 const letters = [];
-const LETTER_COUNT = 88; // 🔥 doubled
+const LETTER_COUNT = 132; // 🔥 triple density
 
 function initLetters(){
   letters.length = 0;
@@ -126,7 +126,7 @@ function drawInnerEye(){
   ctx.save();
   ctx.translate(eye.x, eye.y);
 
-  ctx.rotate(T * 1.2); // same spin-blink you liked
+  ctx.rotate(T * 1.2);
   ctx.setLineDash([8,8]);
   ctx.beginPath();
   ctx.arc(0,0,eye.innerR * eye.blink,0,Math.PI*2);
