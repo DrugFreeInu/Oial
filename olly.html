@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Olly — Mane (Visible)</title>
+<title>Olly — Afterglow</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <style>
 html, body {
   margin: 0;
   padding: 0;
   height: 100%;
-  background: transparent; /* stays transparent */
+  background: transparent;
   overflow: hidden;
 }
 canvas { display:block; }
@@ -30,81 +30,91 @@ function resize(){
 addEventListener("resize", resize);
 resize();
 
-/* ───────── CORE ───────── */
+/* ───────── CORE MOTION (BODY SHIFT) ───────── */
 const core = {
-  x: () => w*0.5,
-  y: () => h*0.5,
-  r: Math.min(w,h)*0.16,
-  vx: 0, vy: 0
+  x: w*0.5,
+  y: h*0.5,
+  vx: 0,
+  vy: 0
 };
 
-/* ───────── STRANDS ───────── */
-const STRANDS = 200;
-const strands = [];
+function push(){
+  core.vx += (Math.random()-0.5) * 1.4;
+  core.vy += (Math.random()-0.5) * 0.9;
+}
+let nextPush = performance.now() + 900;
 
-for(let i=0;i<STRANDS;i++){
-  const a = Math.random()*Math.PI*2;
-  const d = core.r * (0.85 + Math.random()*0.3);
-  strands.push({
-    a, d,
-    lagX: 0, lagY: 0,
+/* ───────── PARTICLES (MANE / GRASS) ───────── */
+const COUNT = 220;
+const particles = [];
+
+for(let i=0;i<COUNT;i++){
+  particles.push({
+    ox: (Math.random()-0.5) * Math.min(w,h)*0.22,
+    oy: (Math.random()-0.5) * Math.min(w,h)*0.22,
+    x: 0,
+    y: 0,
     sway: Math.random()*Math.PI*2,
-    len: 8 + Math.random()*18,
-    alpha: 0.15 + Math.random()*0.15 // ↑ visible
+    len: 12 + Math.random()*26,
+    alpha: 0.12 + Math.random()*0.18
   });
 }
-
-/* ───────── MOTION ───────── */
-function push(){
-  const ang = Math.random()*Math.PI*2;
-  const f = 0.3 + Math.random()*0.6;
-  core.vx += Math.cos(ang)*f;
-  core.vy += Math.sin(ang)*f;
-}
-let nextPush = performance.now()+1200;
 
 /* ───────── UPDATE ───────── */
 function update(){
-  if(performance.now()>nextPush){
+  if(performance.now() > nextPush){
     push();
-    nextPush = performance.now()+1200+Math.random()*2200;
+    nextPush = performance.now() + 900 + Math.random()*1600;
   }
 
-  core.vx *= 0.985;
-  core.vy *= 0.985;
+  core.vx *= 0.97;   // ← heavier inertia
+  core.vy *= 0.97;
 
   const speed = Math.hypot(core.vx, core.vy);
 
-  strands.forEach(s=>{
-    const ax = Math.cos(s.a)*s.d;
-    const ay = Math.sin(s.a)*s.d;
+  particles.forEach(p=>{
+    p.sway += 0.04 + speed*0.14;
 
-    s.sway += 0.035 + speed*0.12;
+    const tx =
+      p.ox +
+      Math.sin(p.sway) * (1.6 + speed*3.2) +
+      core.vx * 10;
 
-    const tx = ax + Math.sin(s.sway)*(1.2 + speed*2.4);
-    const ty = ay + Math.cos(s.sway*0.9)*(1.0 + speed*2.0);
+    const ty =
+      p.oy +
+      Math.cos(p.sway*0.9) * (1.2 + speed*2.6) +
+      core.vy * 10;
 
-    s.lagX += (tx - s.lagX) * 0.08;
-    s.lagY += (ty - s.lagY) * 0.08;
+    // inertia / lag (important)
+    p.x += (tx - p.x) * 0.12;
+    p.y += (ty - p.y) * 0.12;
   });
 }
 
-/* ───────── DRAW ───────── */
+/* ───────── DRAW WITH TRUE MOTION BLUR ───────── */
 function draw(){
-  ctx.clearRect(0,0,w,h);
-  ctx.save();
-  ctx.translate(core.x(), core.y());
-  ctx.globalCompositeOperation = "source-over"; // ← IMPORTANT
+  // THIS IS THE KEY: fade, don't clear
+  ctx.fillStyle = "rgba(255,255,255,0.06)"; 
+  ctx.fillRect(0,0,w,h);
 
-  strands.forEach(s=>{
-    ctx.strokeStyle = `rgba(40,120,90,${s.alpha})`; // darker, visible
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(s.lagX, s.lagY);
-    ctx.lineTo(
-      s.lagX + Math.sin(s.sway)*s.len,
-      s.lagY + s.len
+  ctx.save();
+  ctx.translate(w*0.5, h*0.5);
+  ctx.globalCompositeOperation = "multiply";
+
+  particles.forEach(p=>{
+    const grad = ctx.createLinearGradient(
+      p.x, p.y,
+      p.x, p.y + p.len*2
     );
+
+    grad.addColorStop(0, `rgba(40,120,90,${p.alpha})`);
+    grad.addColorStop(1, `rgba(40,120,90,0)`);
+
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(p.x, p.y + p.len);
     ctx.stroke();
   });
 
