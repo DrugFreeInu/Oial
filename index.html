@@ -9,7 +9,13 @@ html, body {
   margin: 0;
   padding: 0;
   height: 100%;
-  background: radial-gradient(circle at center, #020812, #000);
+  background: radial-gradient(
+    circle at center,
+    #0b1f3a 0%,
+    #08182e 40%,
+    #050f22 75%,
+    #030914 100%
+  );
   overflow: hidden;
 }
 canvas { display:block; }
@@ -47,7 +53,7 @@ const eye = {
 /* ───────── LETTER FIELD ───────── */
 const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789?!@#$%&*+-=/<>[]{}";
 const letters = [];
-const LETTER_COUNT = 132; // 🔥 triple density
+const LETTER_COUNT = 132;
 
 function initLetters(){
   letters.length = 0;
