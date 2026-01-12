@@ -22,7 +22,7 @@ canvas { display:block; }
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
 
-let w,h;
+let w, h;
 function resize(){
   w = canvas.width = innerWidth;
   h = canvas.height = innerHeight;
@@ -33,41 +33,38 @@ resize();
 /* ───────── TIME ───────── */
 let T = 0;
 
-/* ───────── PRESENCE (RING) ───────── */
+/* ───────── PRESENCE ───────── */
 const eye = {
   x: w * 0.5,
   y: h * 0.45,
-  px: w * 0.5,
-  py: h * 0.45,
   radius: 62,
   blink: 1,
   blinkTarget: 1,
-  nextBlink: performance.now() + 9000 + Math.random()*8000
+  nextBlink: performance.now() + 6000 + Math.random()*6000
 };
 
-/* ───────── ARCH SWAY ───────── */
-let swayT = 0;
-let swayDir = 1;
-function archEase(t){
-  return t < 0.5
-    ? 4*t*t*t
-    : 1 - Math.pow(-2*t+2,3)/2;
-}
-
 /* ───────── AIR PARTICLES ───────── */
-const trails = [];
-const MAX_TRAILS = 340;
+const particles = [];
+const MAX_P = 260;
 
-function spawnAir(x,y,vx){
-  trails.push({
-    x, y,
-    vx: vx * 0.15,
-    vy: 0.06 + Math.random()*0.08, // gentle settling
-    r: 18 + Math.random()*26,
-    a: 0.12,
-    life: 1
-  });
-  if(trails.length > MAX_TRAILS) trails.shift();
+function spawnBlinkParticles(){
+  const count = 18 + Math.floor(Math.random()*10);
+
+  for(let i=0;i<count;i++){
+    particles.push({
+      x: eye.x + (Math.random()-0.5)*20,
+      y: eye.y + (Math.random()-0.5)*8,
+      vy: 0.05 + Math.random()*0.09,   // slow settle
+      vx: (Math.random()-0.5)*0.15,
+      r: 14 + Math.random()*22,
+      a: 0.10,
+      life: 1
+    });
+  }
+
+  if(particles.length > MAX_P){
+    particles.splice(0, particles.length - MAX_P);
+  }
 }
 
 /* ───────── MOTION PATH ───────── */
@@ -104,55 +101,74 @@ function bezier(t,p0,p1,p2,p3){
   );
 }
 
-/* ───────── DRAW AIR ───────── */
-function drawAir(){
-  for(let i = trails.length-1; i >= 0; i--){
-    const p = trails[i];
+/* ───────── DRAW PARTICLES ───────── */
+function drawParticles(){
+  for(let i = particles.length-1; i >= 0; i--){
+    const p = particles[i];
     p.life *= 0.97;
 
-    p.x += p.vx + Math.sin(p.y*0.02 + T)*0.08;
+    p.x += p.vx + Math.sin(p.y*0.02 + T)*0.05;
     p.y += p.vy;
 
-    const g = ctx.createRadialGradient(
-      p.x, p.y, 0,
-      p.x, p.y, p.r * p.life
-    );
-    g.addColorStop(0, `rgba(255,180,130,${p.a * p.life})`);
-    g.addColorStop(1, "rgba(255,160,110,0)");
-
-    ctx.fillStyle = g;
+    ctx.fillStyle = `rgba(120,255,180,${p.a * p.life})`;
     ctx.beginPath();
     ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI*2);
     ctx.fill();
 
-    if(p.life < 0.04 || p.y > h + 80) trails.splice(i,1);
+    if(p.life < 0.04 || p.y > h + 80){
+      particles.splice(i,1);
+    }
   }
 }
 
-/* ───────── DRAW FRACTURED RING (THE EYE) ───────── */
-function drawRing(cx, cy){
+/* ───────── DRAW INNER EYE GLOW ───────── */
+function drawEyeGlow(){
   ctx.save();
-  ctx.translate(cx, cy);
+  ctx.translate(eye.x, eye.y);
 
-  const baseRot = Math.sin(T * 0.35) * 0.18;
-  const segments = 20;
+  const pulse = eye.blink; // blink controls aperture
+
+  const grad = ctx.createRadialGradient(0,0,0,0,0,48);
+  grad.addColorStop(0, "rgba(120,255,180,0.35)");
+  grad.addColorStop(0.6, "rgba(120,255,180,0.18)");
+  grad.addColorStop(1, "rgba(120,255,180,0)");
+
+  ctx.fillStyle = grad;
+  ctx.scale(1.6 * pulse, 0.7 * pulse);
+  ctx.beginPath();
+  ctx.arc(0,0,32,0,Math.PI*2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+/* ───────── DRAW FRACTURED RING ───────── */
+function drawRing(){
+  ctx.save();
+  ctx.translate(eye.x, eye.y);
+
+  const breathe = Math.sin(T * 0.6) * 6;
+  const twist = Math.sin(T * 0.35) * 0.25;
+  ctx.rotate(twist);
+
+  const segments = 22;
 
   for(let i = 0; i < segments; i++){
-    if(Math.random() < 0.35) continue;
+    if(Math.random() < 0.38) continue;
 
-    const a0 = (i / segments) * Math.PI*2 + baseRot;
+    const a0 = (i / segments) * Math.PI*2;
     const a1 = a0 + (Math.PI*2/segments) * (0.5 + Math.random()*0.5);
 
     ctx.beginPath();
     ctx.arc(
-      0, 0,
-      eye.radius + Math.sin(T*0.7+i)*2,
-      a0, a1
+      0,0,
+      eye.radius + breathe + Math.sin(T*0.8+i)*2,
+      a0,a1
     );
 
-    ctx.strokeStyle = "rgba(255,190,140,0.22)";
+    ctx.strokeStyle = "rgba(120,255,180,0.45)";
     ctx.lineWidth = 2;
-    ctx.shadowColor = "rgba(255,170,120,0.4)";
+    ctx.shadowColor = "rgba(120,255,180,0.35)";
     ctx.shadowBlur = 14;
     ctx.stroke();
   }
@@ -165,26 +181,13 @@ function loop(){
   ctx.clearRect(0,0,w,h);
   T += 0.003;
 
-  swayT += 0.0014 * swayDir;
-  if(swayT >= 1){ swayT = 1; swayDir = -1; }
-  if(swayT <= 0){ swayT = 0; swayDir = 1; }
-
-  const arc = archEase(swayT);
-  const swayX = (arc - 0.5) * 80;
-  const swayY = Math.sin(arc * Math.PI) * 26;
-
-  eye.px = eye.x;
-  eye.py = eye.y;
-
+  // movement (independent of particles)
   if(!resting){
     const t = Math.min((performance.now() - path.start)/path.dur, 1);
     const ease = t*t*(3 - 2*t);
 
     eye.x = bezier(ease,path.sx,path.c1x,path.c2x,path.ex);
     eye.y = bezier(ease,path.sy,path.c1y,path.c2y,path.ey);
-
-    const vx = eye.x - eye.px;
-    spawnAir(eye.x + swayX, eye.y + swayY, vx);
 
     if(t >= 1){
       resting = true;
@@ -194,8 +197,22 @@ function loop(){
     newPath();
   }
 
-  drawAir();
-  drawRing(eye.x + swayX, eye.y + swayY);
+  // blink logic
+  if(performance.now() > eye.nextBlink && eye.blinkTarget === 1){
+    eye.blinkTarget = 0;
+    spawnBlinkParticles(); // 🔥 PARTICLES FROM BLINK
+  }
+
+  if(eye.blinkTarget === 0 && eye.blink < 0.05){
+    eye.blinkTarget = 1;
+    eye.nextBlink = performance.now() + 6000 + Math.random()*6000;
+  }
+
+  eye.blink += (eye.blinkTarget - eye.blink) * 0.08;
+
+  drawParticles();
+  drawEyeGlow();
+  drawRing();
 
   requestAnimationFrame(loop);
 }
