@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Olly — String</title>
+<title>Olly — Mane (Visible)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <style>
 html, body {
   margin: 0;
   padding: 0;
   height: 100%;
-  background: transparent;
+  background: transparent; /* stays transparent */
   overflow: hidden;
 }
 canvas { display:block; }
@@ -30,60 +30,62 @@ function resize(){
 addEventListener("resize", resize);
 resize();
 
-/* ───────── MOTION SOURCE (ARM / BODY) ───────── */
-const motion = {
-  x: w*0.5,
-  y: h*0.5,
-  vx: 0,
-  vy: 0,
-  nextDrift: performance.now() + 1600
+/* ───────── CORE ───────── */
+const core = {
+  x: () => w*0.5,
+  y: () => h*0.5,
+  r: Math.min(w,h)*0.16,
+  vx: 0, vy: 0
 };
 
-function drift(){
+/* ───────── STRANDS ───────── */
+const STRANDS = 200;
+const strands = [];
+
+for(let i=0;i<STRANDS;i++){
   const a = Math.random()*Math.PI*2;
-  const f = 0.15 + Math.random()*0.35;
-  motion.vx += Math.cos(a)*f;
-  motion.vy += Math.sin(a)*f;
-  motion.nextDrift = performance.now() + 1800 + Math.random()*2200;
-}
-
-/* ───────── PARTICLES (STRING SEGMENTS) ───────── */
-const COUNT = 160;
-const particles = [];
-
-for(let i=0;i<COUNT;i++){
-  particles.push({
-    x: Math.random()*w,
-    y: Math.random()*h,
-    vy: 0.4 + Math.random()*0.8,
+  const d = core.r * (0.85 + Math.random()*0.3);
+  strands.push({
+    a, d,
+    lagX: 0, lagY: 0,
     sway: Math.random()*Math.PI*2,
-    len: 10 + Math.random()*22,
-    alpha: 0.05 + Math.random()*0.08
+    len: 8 + Math.random()*18,
+    alpha: 0.15 + Math.random()*0.15 // ↑ visible
   });
 }
 
+/* ───────── MOTION ───────── */
+function push(){
+  const ang = Math.random()*Math.PI*2;
+  const f = 0.3 + Math.random()*0.6;
+  core.vx += Math.cos(ang)*f;
+  core.vy += Math.sin(ang)*f;
+}
+let nextPush = performance.now()+1200;
+
 /* ───────── UPDATE ───────── */
 function update(){
-  if(performance.now() > motion.nextDrift) drift();
+  if(performance.now()>nextPush){
+    push();
+    nextPush = performance.now()+1200+Math.random()*2200;
+  }
 
-  motion.vx *= 0.985;
-  motion.vy *= 0.985;
-  motion.x += motion.vx;
-  motion.y += motion.vy;
+  core.vx *= 0.985;
+  core.vy *= 0.985;
 
-  const speed = Math.hypot(motion.vx, motion.vy);
+  const speed = Math.hypot(core.vx, core.vy);
 
-  particles.forEach(p=>{
-    p.sway += 0.02 + speed*0.08;
-    p.y += p.vy + speed*0.4;
+  strands.forEach(s=>{
+    const ax = Math.cos(s.a)*s.d;
+    const ay = Math.sin(s.a)*s.d;
 
-    // string lag (this is the finesse)
-    p.x += Math.sin(p.sway) * (0.3 + speed*1.2);
+    s.sway += 0.035 + speed*0.12;
 
-    if(p.y > h + 40){
-      p.y = -40;
-      p.x = Math.random()*w;
-    }
+    const tx = ax + Math.sin(s.sway)*(1.2 + speed*2.4);
+    const ty = ay + Math.cos(s.sway*0.9)*(1.0 + speed*2.0);
+
+    s.lagX += (tx - s.lagX) * 0.08;
+    s.lagY += (ty - s.lagY) * 0.08;
   });
 }
 
@@ -91,17 +93,18 @@ function update(){
 function draw(){
   ctx.clearRect(0,0,w,h);
   ctx.save();
-  ctx.globalCompositeOperation = "lighter";
+  ctx.translate(core.x(), core.y());
+  ctx.globalCompositeOperation = "source-over"; // ← IMPORTANT
 
-  particles.forEach(p=>{
-    const dx = Math.sin(p.sway) * p.len;
-    const dy = p.len;
-
-    ctx.strokeStyle = `rgba(120,255,180,${p.alpha})`;
+  strands.forEach(s=>{
+    ctx.strokeStyle = `rgba(40,120,90,${s.alpha})`; // darker, visible
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(p.x, p.y);
-    ctx.lineTo(p.x + dx, p.y + dy);
+    ctx.moveTo(s.lagX, s.lagY);
+    ctx.lineTo(
+      s.lagX + Math.sin(s.sway)*s.len,
+      s.lagY + s.len
+    );
     ctx.stroke();
   });
 
