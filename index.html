@@ -53,15 +53,13 @@ const LETTER_COUNT = 44;
 function initLetters(){
   letters.length = 0;
   for(let i=0;i<LETTER_COUNT;i++){
-    const a = Math.random()*Math.PI*2;
     letters.push({
-      a,
-      // 🔑 THIS IS THE KEY CHANGE
-      r: eye.outerR - 10 - Math.random()*22,
-      va: (Math.random()-0.5)*0.01,
-      vr: (Math.random()-0.5)*0.2,
-      rot: Math.random()*Math.PI*2,
-      ch: CHARS[Math.floor(Math.random()*CHARS.length)]
+      a: Math.random() * Math.PI * 2,
+      r: eye.outerR - 10 - Math.random() * 22,
+      va: (Math.random() - 0.5) * 0.01,
+      vr: (Math.random() - 0.5) * 0.2,
+      rot: Math.random() * Math.PI * 2,
+      ch: CHARS[Math.floor(Math.random() * CHARS.length)]
     });
   }
 }
@@ -69,18 +67,18 @@ initLetters();
 
 function scrambleLetters(){
   letters.forEach(l=>{
-    l.va += (Math.random()-0.5)*0.04;
-    l.vr += (Math.random()-0.5)*0.8;
-    l.ch = CHARS[Math.floor(Math.random()*CHARS.length)];
+    l.va += (Math.random() - 0.5) * 0.04;
+    l.vr += (Math.random() - 0.5) * 0.8;
+    l.ch = CHARS[Math.floor(Math.random() * CHARS.length)];
   });
 }
 
-/* ───────── DRAW LETTER CHAOS ───────── */
+/* ───────── LETTER CHAOS ───────── */
 function drawLetterRing(){
   ctx.save();
   ctx.translate(eye.x, eye.y);
 
-  // clip so nothing leaks outside ring
+  // clip so letters never leave the ring
   ctx.beginPath();
   ctx.arc(0,0,eye.outerR-2,0,Math.PI*2);
   ctx.clip();
@@ -94,7 +92,7 @@ function drawLetterRing(){
     l.r += l.vr;
     l.rot += 0.01;
 
-    // containment INSIDE ring
+    // containment
     if(l.r > eye.outerR - 6) l.vr *= -1;
     if(l.r < eye.innerRX + 8) l.vr *= -1;
 
@@ -112,7 +110,24 @@ function drawLetterRing(){
   ctx.restore();
 }
 
-/* ───────── INNER EYE ───────── */
+/* ───────── MASK INNER EYE (OCCLUSION) ───────── */
+function maskInnerEye(){
+  ctx.save();
+  ctx.translate(eye.x, eye.y);
+
+  const rx = eye.innerRX * eye.blink;
+  const ry = eye.innerRY * eye.blink;
+
+  ctx.globalCompositeOperation = "destination-out";
+  ctx.beginPath();
+  ctx.ellipse(0,0,rx+1,ry+1,0,0,Math.PI*2);
+  ctx.fill();
+
+  ctx.restore();
+  ctx.globalCompositeOperation = "source-over";
+}
+
+/* ───────── INNER EYE (FOREGROUND) ───────── */
 function drawInnerEye(){
   ctx.save();
   ctx.translate(eye.x, eye.y);
@@ -170,19 +185,20 @@ function loop(){
   T += 0.003;
 
   // blink logic
-  if(performance.now()>eye.nextBlink && eye.blinkTarget===1){
+  if(performance.now() > eye.nextBlink && eye.blinkTarget === 1){
     eye.blinkTarget = 0;
     scrambleLetters();
   }
-  if(eye.blinkTarget===0 && eye.blink<0.05){
+  if(eye.blinkTarget === 0 && eye.blink < 0.05){
     eye.blinkTarget = 1;
-    eye.nextBlink = performance.now()+6000+Math.random()*6000;
+    eye.nextBlink = performance.now() + 6000 + Math.random()*6000;
   }
-  eye.blink += (eye.blinkTarget-eye.blink)*0.08;
+  eye.blink += (eye.blinkTarget - eye.blink) * 0.08;
 
-  drawLetterRing();   // SAME chaos, now inside
-  drawInnerEye();
-  drawOuterRing();    // SAME ring as before
+  drawLetterRing();   // letters first
+  maskInnerEye();     // letters go UNDER eye
+  drawInnerEye();     // eye on top
+  drawOuterRing();    // ring unchanged
 
   requestAnimationFrame(loop);
 }
