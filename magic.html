@@ -59,8 +59,8 @@ function drawAir(){
   air.phase += air.speed;
 
   const inhale = (Math.sin(air.phase) + 1) * 0.5;
-  const alpha = 0.03 + inhale * air.depth;
-  const radius = field.baseR * (3.4 + inhale * 0.6);
+  const alpha = 0.06 + inhale * air.depth;
+  const radius = field.baseR * (3.8 + inhale * 0.8);
 
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
@@ -81,14 +81,14 @@ function drawPressure(){
   pressure.phase += pressure.speed;
 
   const wave = (Math.sin(pressure.phase) + 1) * 0.5;
-  const radius = field.baseR * (2.8 + wave * 1.2);
-  const alpha = 0.025 + wave * 0.055;
+  const radius = field.baseR * (2.8 + wave * 1.3);
+  const alpha = 0.05 + wave * 0.08;
 
   ctx.save();
-  ctx.globalCompositeOperation = "screen";
+  ctx.globalCompositeOperation = "lighter";
 
   const grad = ctx.createRadialGradient(
-    field.x(), field.y(), field.baseR * 0.2,
+    field.x(), field.y(), field.baseR * 0.25,
     field.x(), field.y(), radius
   );
 
