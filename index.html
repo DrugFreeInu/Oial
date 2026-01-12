@@ -41,6 +41,23 @@ const eye = {
   nextBlink: performance.now() + 8000 + Math.random()*7000
 };
 
+// ─── Trails ──────────────────────────
+const trails = [];
+const MAX_TRAILS = 220;
+
+function spawnTrail(x,y){
+  trails.push({
+    x: x + (Math.random()-0.5)*2,
+    y: y + (Math.random()-0.5)*2,
+    r: 2 + Math.random()*3,
+    a: 0.35 + Math.random()*0.25,
+    life: 1,
+    driftX: (Math.random()-0.5)*0.2,
+    driftY: (Math.random()-0.5)*0.2
+  });
+  if(trails.length > MAX_TRAILS) trails.shift();
+}
+
 // ─── Motion Path ─────────────────────
 let path = {};
 let resting = true;
@@ -62,7 +79,7 @@ function newPath(){
     c2x: sx + dx * 0.75,
     c2y: ey - (15 + Math.random()*35),
     start: performance.now(),
-    dur: 1300 + Math.random()*900 // slower darts
+    dur: 1300 + Math.random()*900
   };
 
   resting = false;
@@ -77,6 +94,23 @@ function bezier(t,p0,p1,p2,p3){
     3*u*t*t*p2 +
     t*t*t*p3
   );
+}
+
+// ─── Draw Trails ─────────────────────
+function drawTrails(){
+  for(let i=trails.length-1;i>=0;i--){
+    const p = trails[i];
+    p.life *= 0.965;
+    p.x += p.driftX;
+    p.y += p.driftY;
+
+    ctx.fillStyle = `rgba(255,170,110,${p.a * p.life})`;
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,p.r * p.life,0,Math.PI*2);
+    ctx.fill();
+
+    if(p.life < 0.05) trails.splice(i,1);
+  }
 }
 
 // ─── Draw Eye ─────────────────────────
@@ -118,16 +152,17 @@ function loop(){
 
   if(!resting){
     const t = Math.min((now - path.start)/path.dur, 1);
-
-    // extra soft easing
     const ease = t*t*(3 - 2*t);
 
     eye.x = bezier(ease,path.sx,path.c1x,path.c2x,path.ex);
     eye.y = bezier(ease,path.sy,path.c1y,path.c2y,path.ey);
 
+    // spawn warm trails while moving
+    spawnTrail(eye.x, eye.y);
+
     if(t >= 1){
       resting = true;
-      restUntil = now + 1200 + Math.random()*1800; // longer hover
+      restUntil = now + 1200 + Math.random()*1800;
     }
   } else if(now > restUntil){
     newPath();
@@ -146,6 +181,7 @@ function loop(){
 
   eye.blink += (eye.blinkTarget - eye.blink) * 0.16;
 
+  drawTrails();
   drawEye();
   requestAnimationFrame(loop);
 }
