@@ -37,15 +37,14 @@ let T = 0;
 const eye = {
   x: w * 0.5,
   y: h * 0.45,
-  innerRX: 46,
-  innerRY: 18,
+  innerR: 26,        // 👁 inner circle radius
   outerR: 62,
   blink: 1,
   blinkTarget: 1,
   nextBlink: performance.now() + 6000 + Math.random()*6000
 };
 
-/* ───────── LETTER FIELD (INSIDE RING) ───────── */
+/* ───────── LETTER FIELD ───────── */
 const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789?!@#$";
 const letters = [];
 const LETTER_COUNT = 44;
@@ -78,7 +77,6 @@ function drawLetterRing(){
   ctx.save();
   ctx.translate(eye.x, eye.y);
 
-  // clip so letters never leave the ring
   ctx.beginPath();
   ctx.arc(0,0,eye.outerR-2,0,Math.PI*2);
   ctx.clip();
@@ -92,9 +90,8 @@ function drawLetterRing(){
     l.r += l.vr;
     l.rot += 0.01;
 
-    // containment
     if(l.r > eye.outerR - 6) l.vr *= -1;
-    if(l.r < eye.innerRX + 8) l.vr *= -1;
+    if(l.r < eye.innerR + 8) l.vr *= -1;
 
     const x = Math.cos(l.a) * l.r;
     const y = Math.sin(l.a) * l.r;
@@ -110,38 +107,34 @@ function drawLetterRing(){
   ctx.restore();
 }
 
-/* ───────── MASK INNER EYE ───────── */
+/* ───────── MASK INNER CIRCLE ───────── */
 function maskInnerEye(){
   ctx.save();
   ctx.translate(eye.x, eye.y);
 
-  const rx = eye.innerRX * eye.blink;
-  const ry = eye.innerRY * eye.blink;
-
   ctx.globalCompositeOperation = "destination-out";
   ctx.beginPath();
-  ctx.ellipse(0,0,rx+1,ry+1,0,0,Math.PI*2);
+  ctx.arc(0,0,eye.innerR * eye.blink + 1,0,Math.PI*2);
   ctx.fill();
 
   ctx.restore();
   ctx.globalCompositeOperation = "source-over";
 }
 
-/* ───────── INNER EYE ───────── */
+/* ───────── INNER EYE (DASHED CIRCLE) ───────── */
 function drawInnerEye(){
   ctx.save();
   ctx.translate(eye.x, eye.y);
 
-  const rx = eye.innerRX * eye.blink;
-  const ry = eye.innerRY * eye.blink;
-
+  ctx.setLineDash([8,8]);
   ctx.beginPath();
-  ctx.ellipse(0,0,rx,ry,0,0,Math.PI*2);
+  ctx.arc(0,0,eye.innerR * eye.blink,0,Math.PI*2);
   ctx.strokeStyle = "rgba(120,255,180,0.55)";
-  ctx.lineWidth = 1.6;
+  ctx.lineWidth = 1.4;
   ctx.shadowColor = "rgba(120,255,180,0.4)";
-  ctx.shadowBlur = 12;
+  ctx.shadowBlur = 10;
   ctx.stroke();
+  ctx.setLineDash([]);
 
   ctx.restore();
 }
@@ -151,15 +144,13 @@ function drawOuterRing(){
   ctx.save();
   ctx.translate(eye.x, eye.y);
 
-  // 🔑 smooth constant spin
-  const spin = T * 0.6;
-  ctx.rotate(spin);
+  ctx.rotate(T * 0.6);
 
   const breathe = Math.sin(T * 0.6) * 6;
   const segments = 22;
 
   for(let i=0;i<segments;i++){
-    if(Math.random() < 0.38) continue;
+    if(Math.random()<0.38) continue;
 
     const a0 = (i/segments)*Math.PI*2;
     const a1 = a0 + (Math.PI*2/segments)*(0.5+Math.random()*0.5);
@@ -185,21 +176,20 @@ function loop(){
   ctx.clearRect(0,0,w,h);
   T += 0.003;
 
-  // blink logic
-  if(performance.now() > eye.nextBlink && eye.blinkTarget === 1){
+  if(performance.now()>eye.nextBlink && eye.blinkTarget===1){
     eye.blinkTarget = 0;
     scrambleLetters();
   }
-  if(eye.blinkTarget === 0 && eye.blink < 0.05){
+  if(eye.blinkTarget===0 && eye.blink<0.05){
     eye.blinkTarget = 1;
-    eye.nextBlink = performance.now() + 6000 + Math.random()*6000;
+    eye.nextBlink = performance.now()+6000+Math.random()*6000;
   }
-  eye.blink += (eye.blinkTarget - eye.blink) * 0.08;
+  eye.blink += (eye.blinkTarget-eye.blink)*0.08;
 
   drawLetterRing();
-  maskInnerEye();
-  drawInnerEye();
-  drawOuterRing(); // ⟳ spinning ring
+  maskInnerEye();     // letters go under
+  drawInnerEye();     // dashed circle
+  drawOuterRing();    // spinning ring
 
   requestAnimationFrame(loop);
 }
