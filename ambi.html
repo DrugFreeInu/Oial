@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>ambient-build</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: radial-gradient(circle at center, #0a2cff, #020614);
+  overflow: hidden;
+  font-family: system-ui, sans-serif;
+}
+
+canvas {
+  display: block;
+}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<script>
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
+
+let w, h;
+function resize(){
+  w = canvas.width = window.innerWidth;
+  h = canvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resize);
+resize();
+
+let t = 0;
+
+function draw(){
+  ctx.clearRect(0,0,w,h);
+
+  const cx = w/2;
+  const cy = h/2;
+
+  const baseRadius = Math.min(w,h) * 0.15;
+  const pulse = Math.sin(t*0.02) * 8;
+  const radius = baseRadius + pulse;
+
+  // glow
+  const grad = ctx.createRadialGradient(cx, cy, radius*0.2, cx, cy, radius*2);
+  grad.addColorStop(0, "rgba(120,160,255,0.35)");
+  grad.addColorStop(1, "rgba(120,160,255,0)");
+
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius*2, 0, Math.PI*2);
+  ctx.fill();
+
+  // ring
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(t*0.003);
+  ctx.strokeStyle = "rgba(200,220,255,0.8)";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 10]);
+  ctx.beginPath();
+  ctx.arc(0,0,radius,0,Math.PI*2);
+  ctx.stroke();
+  ctx.restore();
+
+  // inner core
+  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius*0.25, 0, Math.PI*2);
+  ctx.fill();
+
+  t++;
+  requestAnimationFrame(draw);
+}
+
+draw();
+</script>
+</body>
+</html>
