@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>ambient-build</title>
+<title>ambi</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <style>
 html, body {
   margin: 0;
   padding: 0;
   height: 100%;
-  background: radial-gradient(circle at center, #0a2cff, #020614);
+  background: radial-gradient(circle at center, #26140d, #0e0705);
   overflow: hidden;
   font-family: system-ui, sans-serif;
 }
@@ -37,44 +37,61 @@ resize();
 let t = 0;
 
 function draw(){
-  ctx.clearRect(0,0,w,h);
+  // very slow fade — warmth carried into tomorrow
+  ctx.fillStyle = "rgba(255,210,180,0.015)";
+  ctx.fillRect(0, 0, w, h);
 
-  const cx = w/2;
-  const cy = h/2;
+  ctx.filter = "blur(0.8px)";
 
-  const baseRadius = Math.min(w,h) * 0.15;
-  const pulse = Math.sin(t*0.02) * 8;
-  const radius = baseRadius + pulse;
+  // gentle forward drift (not centered anymore)
+  const driftX = Math.sin(t * 0.0004) * w * 0.08;
+  const driftY = Math.cos(t * 0.0003) * h * 0.06;
 
-  // glow
-  const grad = ctx.createRadialGradient(cx, cy, radius*0.2, cx, cy, radius*2);
-  grad.addColorStop(0, "rgba(120,160,255,0.35)");
-  grad.addColorStop(1, "rgba(120,160,255,0)");
+  const cx = w / 2 + driftX;
+  const cy = h / 2 + driftY;
+
+  const baseRadius = Math.min(w, h) * 0.17;
+
+  // no pulse — slow expansion like morning breath
+  const radius = baseRadius + Math.sin(t * 0.0012) * 6;
+
+  // warm-to-soft gradient (night → morning)
+  const grad = ctx.createRadialGradient(
+    cx, cy, radius * 0.4,
+    cx, cy, radius * 2.6
+  );
+  grad.addColorStop(0, "rgba(255,225,205,0.45)");
+  grad.addColorStop(0.5, "rgba(255,200,175,0.22)");
+  grad.addColorStop(1, "rgba(255,190,170,0)");
 
   ctx.fillStyle = grad;
   ctx.beginPath();
-  ctx.arc(cx, cy, radius*2, 0, Math.PI*2);
+  ctx.arc(cx, cy, radius * 2.6, 0, Math.PI * 2);
   ctx.fill();
 
-  // ring
+  // barely-there horizon ring (future-facing)
   ctx.save();
   ctx.translate(cx, cy);
-  ctx.rotate(t*0.003);
-  ctx.strokeStyle = "rgba(200,220,255,0.8)";
-  ctx.lineWidth = 2;
-  ctx.setLineDash([6, 10]);
+  ctx.rotate(t * 0.0006);
+  ctx.strokeStyle = "rgba(255,235,220,0.18)";
+  ctx.lineWidth = 1;
+  ctx.setLineDash([18, 28]);
   ctx.beginPath();
-  ctx.arc(0,0,radius,0,Math.PI*2);
+  ctx.arc(0, 0, radius * 0.95, 0, Math.PI * 2);
   ctx.stroke();
   ctx.restore();
 
-  // inner core
-  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  // soft core — not bright, just present
+  ctx.filter = "blur(1.2px)";
+  ctx.fillStyle = "rgba(255,245,235,0.6)";
   ctx.beginPath();
-  ctx.arc(cx, cy, radius*0.25, 0, Math.PI*2);
+  ctx.arc(cx, cy, radius * 0.25, 0, Math.PI * 2);
   ctx.fill();
 
-  t++;
+  ctx.filter = "none";
+
+  // time moves gently forward
+  t += 0.4;
   requestAnimationFrame(draw);
 }
 
