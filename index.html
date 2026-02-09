@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <title>a-eye-magic</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
 <style>
 html, body {
   margin: 0;
@@ -18,11 +19,41 @@ html, body {
   );
   overflow: hidden;
 }
-canvas { display:block; }
+
+canvas {
+  display: block;
+}
+
+/* ───────── LETTERS DOCK (NEW) ───────── */
+#letters-dock {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 34%;              /* adjust height here */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;     /* canvas still gets events */
+}
+
+#letters-dock iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  pointer-events: auto;     /* keyboard still clickable */
+}
 </style>
 </head>
+
 <body>
+
 <canvas id="c"></canvas>
+
+<!-- ───────── LETTERS MODULE (NEW) ───────── -->
+<div id="letters-dock">
+  <iframe src="letters.html"></iframe>
+</div>
 
 <script>
 const canvas = document.getElementById("c");
@@ -132,7 +163,7 @@ function maskInnerEye(){
   ctx.globalCompositeOperation = "source-over";
 }
 
-/* ───────── INNER EYE (DASHED + SPIN BLINK) ───────── */
+/* ───────── INNER EYE ───────── */
 function drawInnerEye(){
   ctx.save();
   ctx.translate(eye.x, eye.y);
@@ -151,7 +182,7 @@ function drawInnerEye(){
   ctx.restore();
 }
 
-/* ───────── SPINNING OUTER RING ───────── */
+/* ───────── OUTER RING ───────── */
 function drawOuterRing(){
   ctx.save();
   ctx.translate(eye.x, eye.y);
@@ -208,5 +239,6 @@ function loop(){
 
 loop();
 </script>
+
 </body>
 </html>
