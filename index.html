@@ -10,7 +10,13 @@ html, body {
   margin: 0;
   padding: 0;
   height: 100%;
-  background: transparent; /* ✅ BACKGROUND REMOVED */
+  background: radial-gradient(
+    circle at center,
+    #0b1f3a 0%,
+    #08182e 40%,
+    #050f22 75%,
+    #030914 100%
+  );
   overflow: hidden;
 }
 
@@ -18,7 +24,7 @@ canvas {
   display: block;
 }
 
-/* ───────── LETTERS DOCK ───────── */
+/* ───────── LETTERS DOCK (NEW) ───────── */
 #letters-dock {
   position: absolute;
   left: 0;
@@ -35,7 +41,6 @@ canvas {
   width: 100%;
   height: 100%;
   border: none;
-  background: transparent; /* safety */
   pointer-events: auto;     /* keyboard still clickable */
 }
 </style>
@@ -45,7 +50,7 @@ canvas {
 
 <canvas id="c"></canvas>
 
-<!-- ───────── LETTERS MODULE ───────── -->
+<!-- ───────── LETTERS MODULE (NEW) ───────── -->
 <div id="letters-dock">
   <iframe src="letters.html"></iframe>
 </div>
@@ -126,6 +131,7 @@ function drawLetterRing(){
     l.rot += 0.01;
 
     l.vr *= 0.985;
+
     if(l.r > BAND_OUTER) l.vr *= -1;
     if(l.r < BAND_INNER) l.vr *= -1;
 
@@ -182,6 +188,7 @@ function drawOuterRing(){
   ctx.translate(eye.x, eye.y);
 
   ctx.rotate(T * 0.6);
+
   const breathe = Math.sin(T * 0.6) * 6;
   const segments = 22;
 
