@@ -8,7 +8,7 @@
 html, body {
   margin: 0;
   height: 100%;
-  background: transparent;
+  background: transparent;   /* truly transparent */
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   display: flex;
   align-items: center;
@@ -16,12 +16,9 @@ html, body {
   color: #fff;
 }
 
-/* BLACK SQUARE CONTAINER */
+/* REMOVE PANEL ENTIRELY */
 .panel {
-  background: #000;
-  padding: 28px 32px;
-  border-radius: 10px;
-  box-shadow: 0 0 40px rgba(0,0,0,0.8);
+  display: contents;         /* ⚠️ no box, no background, no layout */
 }
 
 /* KEYBOARD */
@@ -29,6 +26,7 @@ html, body {
   width: 520px;
 }
 
+/* ROWS */
 .row {
   display: flex;
   justify-content: center;
@@ -36,7 +34,7 @@ html, body {
   margin-bottom: 14px;
 }
 
-/* KEYS */
+/* KEYS — ONLY THING WITH COLOR */
 .key {
   min-width: 34px;
   height: 42px;
@@ -48,16 +46,18 @@ html, body {
   font-size: 16px;
   letter-spacing: 0.05em;
   border-radius: 6px;
+
+  /* KEY COLOR (INTENTIONAL) */
   background: linear-gradient(
     180deg,
     #5aa9ff 0%,
     #2f6bff 50%,
     #1b3cff 100%
   );
+
   color: #fff;
   opacity: 0.9;
 
-  /* motion + interaction */
   animation: float 8s ease-in-out infinite;
   transition:
     transform 0.15s ease,
@@ -65,14 +65,14 @@ html, body {
     box-shadow 0.12s ease;
 }
 
-/* GENTLE FLOAT */
+/* FLOAT */
 @keyframes float {
   0%   { transform: translate(0px, 0px); }
   50%  { transform: translate(1px, -4px); }
   100% { transform: translate(0px, 0px); }
 }
 
-/* DESYNC FOR ORGANIC FEEL */
+/* DESYNC */
 .key:nth-child(odd)  { animation-duration: 9s; }
 .key:nth-child(3n)   { animation-duration: 11s; }
 .key:nth-child(5n)   { animation-duration: 10s; }
@@ -126,7 +126,7 @@ html, body {
 <script>
 document.querySelectorAll('.key').forEach(key => {
   key.addEventListener('click', () => {
-    console.log(key.textContent); // hook point
+    console.log(key.textContent);
   });
 });
 </script>
