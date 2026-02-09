@@ -2,233 +2,133 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>a-eye-magic</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>On-Screen Keyboard</title>
 
 <style>
 html, body {
   margin: 0;
-  padding: 0;
   height: 100%;
-  background: transparent;   /* ✅ background removed */
-  overflow: hidden;
-}
-
-canvas {
-  display: block;
-}
-
-/* ───────── LETTERS DOCK ───────── */
-#letters-dock {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 100%;
-  height: 34%;
+  background: transparent;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   display: flex;
   align-items: center;
   justify-content: center;
-  pointer-events: none;
+  color: #fff;
 }
 
-#letters-dock iframe {
-  width: 100%;
-  height: 100%;
-  border: none;
-  pointer-events: auto;
+/* BLACK SQUARE CONTAINER */
+.panel {
+  background: #000;
+  padding: 28px 32px;
+  border-radius: 10px;
+  box-shadow: 0 0 40px rgba(0,0,0,0.8);
 }
+
+/* KEYBOARD */
+.keyboard {
+  width: 520px;
+}
+
+.row {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+/* KEYS */
+.key {
+  min-width: 34px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  font-size: 16px;
+  letter-spacing: 0.05em;
+  border-radius: 6px;
+  background: linear-gradient(
+    180deg,
+    #5aa9ff 0%,
+    #2f6bff 50%,
+    #1b3cff 100%
+  );
+  color: #fff;
+  opacity: 0.9;
+
+  /* motion + interaction */
+  animation: float 8s ease-in-out infinite;
+  transition:
+    transform 0.15s ease,
+    opacity 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+/* GENTLE FLOAT */
+@keyframes float {
+  0%   { transform: translate(0px, 0px); }
+  50%  { transform: translate(1px, -4px); }
+  100% { transform: translate(0px, 0px); }
+}
+
+/* DESYNC FOR ORGANIC FEEL */
+.key:nth-child(odd)  { animation-duration: 9s; }
+.key:nth-child(3n)   { animation-duration: 11s; }
+.key:nth-child(5n)   { animation-duration: 10s; }
+
+/* HOVER */
+@media (hover: hover) {
+  .key:hover {
+    transform: translateY(-4px);
+    opacity: 1;
+    box-shadow:
+      0 4px 12px rgba(60,120,255,0.35),
+      inset 0 0 0 1px rgba(255,255,255,0.15);
+  }
+}
+
+/* PRESS */
+.key:active {
+  transform: scale(0.92);
+  opacity: 1;
+  box-shadow: none;
+}
+
+/* STAGGER */
+.row.qwerty { padding-left: 0; }
+.row.asdf   { padding-left: 22px; }
+.row.zxcv   { padding-left: 44px; }
 </style>
 </head>
 
 <body>
 
-<canvas id="c"></canvas>
+<div class="panel">
+  <div class="keyboard">
+    <div class="row qwerty">
+      <div class="key">Q</div><div class="key">W</div><div class="key">E</div><div class="key">R</div><div class="key">T</div>
+      <div class="key">Y</div><div class="key">U</div><div class="key">I</div><div class="key">O</div><div class="key">P</div>
+    </div>
 
-<div id="letters-dock">
-  <iframe src="letters.html"></iframe>
+    <div class="row asdf">
+      <div class="key">A</div><div class="key">S</div><div class="key">D</div><div class="key">F</div><div class="key">G</div>
+      <div class="key">H</div><div class="key">J</div><div class="key">K</div><div class="key">L</div>
+    </div>
+
+    <div class="row zxcv">
+      <div class="key">Z</div><div class="key">X</div><div class="key">C</div><div class="key">V</div><div class="key">B</div>
+      <div class="key">N</div><div class="key">M</div>
+    </div>
+  </div>
 </div>
 
 <script>
-const canvas = document.getElementById("c");
-const ctx = canvas.getContext("2d");
-
-let w,h;
-function resize(){
-  w = canvas.width = innerWidth;
-  h = canvas.height = innerHeight;
-}
-addEventListener("resize", resize);
-resize();
-
-/* ───────── TIME ───────── */
-let T = 0;
-
-/* ───────── EYE ───────── */
-const eye = {
-  x: w * 0.5,
-  y: h * 0.45,
-  innerR: 26,
-  outerR: 62,
-  blink: 1,
-  blinkTarget: 1,
-  nextBlink: performance.now() + 6000 + Math.random()*6000
-};
-
-/* ───────── LETTER FIELD ───────── */
-const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789?!@#$%&*+-=/<>[]{}";
-const letters = [];
-const LETTER_COUNT = 132;
-
-const BAND_INNER = eye.innerR + 12;
-const BAND_OUTER = eye.outerR - 8;
-
-function initLetters(){
-  letters.length = 0;
-  for(let i=0;i<LETTER_COUNT;i++){
-    letters.push({
-      a: Math.random() * Math.PI * 2,
-      r: BAND_INNER + Math.random() * (BAND_OUTER - BAND_INNER),
-      va: (Math.random() - 0.5) * 0.01,
-      vr: (Math.random() - 0.5) * 0.2,
-      rot: Math.random() * Math.PI * 2,
-      ch: CHARS[Math.floor(Math.random() * CHARS.length)]
-    });
-  }
-}
-initLetters();
-
-function scrambleLetters(){
-  letters.forEach(l=>{
-    l.va += (Math.random() - 0.5) * 0.04;
-    l.vr += (Math.random() - 0.5) * 0.8;
-    l.ch = CHARS[Math.floor(Math.random() * CHARS.length)];
+document.querySelectorAll('.key').forEach(key => {
+  key.addEventListener('click', () => {
+    console.log(key.textContent); // hook point
   });
-}
-
-/* ───────── LETTER CHAOS ───────── */
-function drawLetterRing(){
-  ctx.save();
-  ctx.translate(eye.x, eye.y);
-
-  ctx.beginPath();
-  ctx.arc(0,0,eye.outerR-2,0,Math.PI*2);
-  ctx.clip();
-
-  ctx.font = "14px monospace";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-
-  letters.forEach(l=>{
-    l.a += l.va;
-    l.r += l.vr;
-    l.rot += 0.01;
-
-    l.vr *= 0.985;
-    if(l.r > BAND_OUTER) l.vr *= -1;
-    if(l.r < BAND_INNER) l.vr *= -1;
-
-    const x = Math.cos(l.a) * l.r;
-    const y = Math.sin(l.a) * l.r;
-
-    ctx.save();
-    ctx.translate(x,y);
-    ctx.rotate(l.rot);
-    ctx.fillStyle = "rgba(120,255,180,0.65)";
-    ctx.fillText(l.ch,0,0);
-    ctx.restore();
-  });
-
-  ctx.restore();
-}
-
-/* ───────── MASK INNER CIRCLE ───────── */
-function maskInnerEye(){
-  ctx.save();
-  ctx.translate(eye.x, eye.y);
-
-  ctx.globalCompositeOperation = "destination-out";
-  ctx.beginPath();
-  ctx.arc(0,0,eye.innerR * eye.blink + 1,0,Math.PI*2);
-  ctx.fill();
-
-  ctx.restore();
-  ctx.globalCompositeOperation = "source-over";
-}
-
-/* ───────── INNER EYE ───────── */
-function drawInnerEye(){
-  ctx.save();
-  ctx.translate(eye.x, eye.y);
-
-  ctx.rotate(T * 1.2);
-  ctx.setLineDash([8,8]);
-  ctx.beginPath();
-  ctx.arc(0,0,eye.innerR * eye.blink,0,Math.PI*2);
-  ctx.strokeStyle = "rgba(120,255,180,0.55)";
-  ctx.lineWidth = 1.4;
-  ctx.shadowColor = "rgba(120,255,180,0.4)";
-  ctx.shadowBlur = 10;
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-  ctx.restore();
-}
-
-/* ───────── OUTER RING ───────── */
-function drawOuterRing(){
-  ctx.save();
-  ctx.translate(eye.x, eye.y);
-
-  ctx.rotate(T * 0.6);
-  const breathe = Math.sin(T * 0.6) * 6;
-  const segments = 22;
-
-  for(let i=0;i<segments;i++){
-    if(Math.random()<0.38) continue;
-
-    const a0 = (i/segments)*Math.PI*2;
-    const a1 = a0 + (Math.PI*2/segments)*(0.5+Math.random()*0.5);
-
-    ctx.beginPath();
-    ctx.arc(
-      0,0,
-      eye.outerR + breathe + Math.sin(T+i)*2,
-      a0,a1
-    );
-    ctx.strokeStyle = "rgba(120,255,180,0.45)";
-    ctx.lineWidth = 2;
-    ctx.shadowColor = "rgba(120,255,180,0.35)";
-    ctx.shadowBlur = 14;
-    ctx.stroke();
-  }
-
-  ctx.restore();
-}
-
-/* ───────── LOOP ───────── */
-function loop(){
-  ctx.clearRect(0,0,w,h);
-  T += 0.003;
-
-  if(performance.now()>eye.nextBlink && eye.blinkTarget===1){
-    eye.blinkTarget = 0;
-    scrambleLetters();
-  }
-  if(eye.blinkTarget===0 && eye.blink<0.05){
-    eye.blinkTarget = 1;
-    eye.nextBlink = performance.now()+6000+Math.random()*6000;
-  }
-  eye.blink += (eye.blinkTarget-eye.blink)*0.08;
-
-  drawLetterRing();
-  maskInnerEye();
-  drawInnerEye();
-  drawOuterRing();
-
-  requestAnimationFrame(loop);
-}
-
-loop();
+});
 </script>
 
 </body>
