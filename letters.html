@@ -8,7 +8,7 @@
 html, body {
   margin: 0;
   height: 100%;
-  background: transparent;   /* truly transparent */
+  background: transparent;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   display: flex;
   align-items: center;
@@ -18,7 +18,7 @@ html, body {
 
 /* REMOVE PANEL ENTIRELY */
 .panel {
-  display: contents;         /* ⚠️ no box, no background, no layout */
+  display: contents;
 }
 
 /* KEYBOARD */
@@ -34,7 +34,7 @@ html, body {
   margin-bottom: 14px;
 }
 
-/* KEYS — ONLY THING WITH COLOR */
+/* KEYS */
 .key {
   min-width: 34px;
   height: 42px;
@@ -43,11 +43,13 @@ html, body {
   justify-content: center;
   cursor: pointer;
   user-select: none;
+
   font-size: 16px;
-  letter-spacing: 0.05em;
+  font-weight: 600;              /* ✅ BOLDER LETTERS */
+  letter-spacing: 0.04em;        /* optical balance */
+
   border-radius: 6px;
 
-  /* KEY COLOR (INTENTIONAL) */
   background: linear-gradient(
     180deg,
     #5aa9ff 0%,
