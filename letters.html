@@ -4,51 +4,51 @@
 <meta charset="UTF-8" />
 <title>On-Screen Keyboard</title>
 
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@900&display=swap" rel="stylesheet">
+
 <style>
 html, body {
   margin: 0;
   height: 100%;
   background: transparent;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Nunito', sans-serif;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
 }
 
-/* REMOVE PANEL ENTIRELY */
 .panel {
   display: contents;
 }
 
-/* KEYBOARD */
 .keyboard {
-  width: 520px;
+  width: 600px;
 }
 
-/* ROWS */
 .row {
   display: flex;
   justify-content: center;
-  gap: 14px;
-  margin-bottom: 14px;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
-/* KEYS */
+/* BASE KEY */
 .key {
-  min-width: 34px;
-  height: 42px;
+  min-width: 44px;
+  height: 54px;
+
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   user-select: none;
 
-  font-size: 16px;
-  font-weight: 600;              /* ✅ BOLDER LETTERS */
-  letter-spacing: 0.04em;        /* optical balance */
+  font-size: 32px;        /* fills more of frame */
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  line-height: 1;
 
-  border-radius: 6px;
+  border-radius: 8px;
 
   background: linear-gradient(
     180deg,
@@ -57,14 +57,26 @@ html, body {
     #1b3cff 100%
   );
 
-  color: #fff;
-  opacity: 0.9;
+  color: #a8b0b8;  /* ~10% darker matte grey */
+
+  opacity: 0.95;
 
   animation: float 8s ease-in-out infinite;
   transition:
     transform 0.15s ease,
-    opacity 0.12s ease,
     box-shadow 0.12s ease;
+}
+
+/* NUMBER KEYS */
+.key.number {
+  background: linear-gradient(
+    180deg,
+    #4fd1c5 0%,
+    #14b8a6 50%,
+    #0f766e 100%
+  );
+
+  color: #363c40; /* slight deepening to match luminance shift */
 }
 
 /* FLOAT */
@@ -74,33 +86,32 @@ html, body {
   100% { transform: translate(0px, 0px); }
 }
 
-/* DESYNC */
 .key:nth-child(odd)  { animation-duration: 9s; }
 .key:nth-child(3n)   { animation-duration: 11s; }
 .key:nth-child(5n)   { animation-duration: 10s; }
 
-/* HOVER */
 @media (hover: hover) {
   .key:hover {
     transform: translateY(-4px);
-    opacity: 1;
     box-shadow:
-      0 4px 12px rgba(60,120,255,0.35),
-      inset 0 0 0 1px rgba(255,255,255,0.15);
+      0 6px 16px rgba(60,120,255,0.35),
+      inset 0 0 0 1px rgba(255,255,255,0.12);
+  }
+
+  .key.number:hover {
+    box-shadow:
+      0 6px 16px rgba(20,184,166,0.35),
+      inset 0 0 0 1px rgba(255,255,255,0.12);
   }
 }
 
-/* PRESS */
 .key:active {
-  transform: scale(0.92);
-  opacity: 1;
-  box-shadow: none;
+  transform: scale(0.94);
 }
 
-/* STAGGER */
 .row.qwerty { padding-left: 0; }
-.row.asdf   { padding-left: 22px; }
-.row.zxcv   { padding-left: 44px; }
+.row.asdf   { padding-left: 26px; }
+.row.zxcv   { padding-left: 52px; }
 </style>
 </head>
 
@@ -108,6 +119,20 @@ html, body {
 
 <div class="panel">
   <div class="keyboard">
+
+    <div class="row numbers">
+      <div class="key number">1</div>
+      <div class="key number">2</div>
+      <div class="key number">3</div>
+      <div class="key number">4</div>
+      <div class="key number">5</div>
+      <div class="key number">6</div>
+      <div class="key number">7</div>
+      <div class="key number">8</div>
+      <div class="key number">9</div>
+      <div class="key number">0</div>
+    </div>
+
     <div class="row qwerty">
       <div class="key">Q</div><div class="key">W</div><div class="key">E</div><div class="key">R</div><div class="key">T</div>
       <div class="key">Y</div><div class="key">U</div><div class="key">I</div><div class="key">O</div><div class="key">P</div>
@@ -122,6 +147,7 @@ html, body {
       <div class="key">Z</div><div class="key">X</div><div class="key">C</div><div class="key">V</div><div class="key">B</div>
       <div class="key">N</div><div class="key">M</div>
     </div>
+
   </div>
 </div>
 
